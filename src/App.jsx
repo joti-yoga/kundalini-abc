@@ -1,35 +1,43 @@
-import React from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import GuestHome from './pages/GuestHome'
-import Launch from './pages/Launch'
-import Welcome from './pages/Welcome'
-import Intro from './pages/Intro'
-import Register from './pages/Register'
-import RegisterSuccess from './pages/RegisterSuccess'
-import MemberHome from './pages/MemberHome'
-import CoursePlayer from './pages/CoursePlayer'
-import MemberSettings from './pages/MemberSettings'
-import UpgradeMembership from './pages/UpgradeMembership'
-import EntryChoice from './pages/EntryChoice'
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Home from './pages/Home';
+import Launch from './pages/Launch';
+import Welcome from './pages/Welcome';
+import Intro from './pages/Intro';
+import RegisterSuccess from './pages/RegisterSuccess';
+import CoursePlayer from './pages/CoursePlayer';
+import MemberSettings from './pages/MemberSettings';
+import Upgrade from './pages/Upgrade';
+import Entry from './pages/Entry';
+import CourseList from './pages/CourseList';
+import PracticeCalendar from './pages/PracticeCalendar';  // 引入 PracticeCalendar
+import Community from './pages/Community';  // 引入 Community
+import DesignSystemDemo from './pages/DesignSystemDemo';  // 引入設計系統示例
 
 function App() {
   return (
     <Router>
       <Routes>
+        {/* 其他頁面路由 */}
         <Route path="/" element={<Launch />} />
         <Route path="/intro" element={<Intro />} />
-        <Route path="/entry" element={<EntryChoice />} />
+        <Route path="/entry" element={<Entry />} />
         <Route path="/welcome" element={<Welcome />} />
-        <Route path="/guest-home" element={<GuestHome />} />
-        <Route path="/register" element={<Register />} />
+
         <Route path="/register-success" element={<RegisterSuccess />} />
-        <Route path="/member-home" element={<MemberHome />} />
+        <Route path="/home" element={<Home />} />
         <Route path="/course/:id" element={<CoursePlayer />} />
         <Route path="/settings" element={<MemberSettings />} />
-        <Route path="/upgrade" element={<UpgradeMembership />} />
+        <Route path="/upgrade" element={<Upgrade />} />
+
+        {/* 新增路由設定 */}
+        <Route path="/course-list" element={<CourseList />} />
+        <Route path="/practice-calendar" element={<PracticeCalendar />} />  {/* 新增練習日曆頁面路由 */}
+        <Route path="/community" element={<Community />} />  {/* 新增社群互動頁面路由 */}
+        <Route path="/design-system" element={<DesignSystemDemo />} />  {/* 設計系統示例頁面 */}
       </Routes>
     </Router>
-  )
+  );
 }
 
-export default App
+export default App;
