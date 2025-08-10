@@ -6,13 +6,26 @@ import { Link } from 'react-router-dom';
 
 export default function Home() {
   const navigate = useNavigate();
-  const [user] = useAuthState(auth);
+  const [user, loading, error] = useAuthState(auth);
   const [isGuestMode, setIsGuestMode] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
   // 檢查訪客模式狀態
   useEffect(() => {
     const guestMode = localStorage.getItem('isGuestMode') === 'true';
     setIsGuestMode(guestMode);
+  }, []);
+
+  // 動態檢測屏幕寬度
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+    
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    
+    return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
   const goToCourse = () => {
@@ -55,10 +68,18 @@ export default function Home() {
           Hi, {isGuestMode ? '訪客' : (user?.displayName || '帥哥/美女')}
         </h2>
         <h1 className="text-3xl font-semibold" style={{ color: '#999700' }}>歡迎來到 Joti's昆達里尼ABC瑜伽</h1>
-        <p className="text-lg text-gray-500 mt-2">選擇您想進行的操作</p>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-12 md:gap-16 items-center justify-center">
+      <div 
+        className="w-full p-8 min-h-[60vh] md:min-h-0"
+        style={{
+          display: 'flex',
+          flexDirection: isDesktop ? 'row' : 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: isDesktop ? '8rem' : '4rem'
+        }}
+      >
         <button
           onClick={goToCourse}
           className="bg-yellow-400 text-white px-16 py-8 rounded-xl shadow hover:bg-yellow-500 transition text-4xl font-bold min-w-[300px] min-h-[120px]"
