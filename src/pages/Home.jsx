@@ -63,23 +63,25 @@ export default function Home() {
     <div className="min-h-screen bg-yellow-50 p-6">
       {/* 右上角按鈕組 */}
       <div className="fixed top-4 right-4 flex gap-2 z-10">
-        <button
-          onClick={goBack}
-          className="bg-white hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-lg shadow-md border text-sm font-medium transition-colors"
-          title="回上一頁"
-        >
-          ← 回上一頁
-        </button>
-        
-        {!user && !isGuestMode && (
+        <div className="flex gap-2">
           <button
-            onClick={goToLogin}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg shadow-md text-sm font-medium transition-colors"
-            title="登入頁面"
+            onClick={goBack}
+            className="bg-white hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-lg shadow-md border text-sm font-medium transition-colors"
+            title="回上一頁"
           >
-            登入
+            ← 回上一頁
           </button>
-        )}
+          
+          {!user && !isGuestMode && (
+            <button
+              onClick={goToLogin}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg shadow-md text-sm font-medium transition-colors"
+              title="登入頁面"
+            >
+              登入
+            </button>
+          )}
+        </div>
         
         {(user || isGuestMode) && (
           <button
