@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../firebase';
+import { signOut } from 'firebase/auth';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -40,8 +41,56 @@ export default function Home() {
     navigate('/community');
   };
 
+  const goBack = () => {
+    window.history.back();
+  };
+
+  const goToLogin = () => {
+    navigate('/entry');
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      localStorage.removeItem('isGuestMode');
+      // 保持在當前頁面，不需要導航
+    } catch (error) {
+      console.error('登出失敗:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-yellow-50 p-6">
+      {/* 右上角按鈕組 */}
+      <div className="fixed top-4 right-4 flex gap-2 z-10">
+        <button
+          onClick={goBack}
+          className="bg-white hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-lg shadow-md border text-sm font-medium transition-colors"
+          title="回上一頁"
+        >
+          ← 回上一頁
+        </button>
+        
+        {!user && !isGuestMode && (
+          <button
+            onClick={goToLogin}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg shadow-md text-sm font-medium transition-colors"
+            title="登入頁面"
+          >
+            登入
+          </button>
+        )}
+        
+        {(user || isGuestMode) && (
+          <button
+            onClick={handleLogout}
+            className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg shadow-md text-sm font-medium transition-colors"
+            title="登出"
+          >
+            登出
+          </button>
+        )}
+      </div>
       {/* 訪客模式提示橫幅 */}
       {isGuestMode && (
         <div className="mb-6 bg-orange-100 border-l-4 border-orange-500 p-4 rounded-lg">
