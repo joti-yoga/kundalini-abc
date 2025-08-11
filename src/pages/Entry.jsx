@@ -256,8 +256,8 @@ function Entry() {
       // 重置loading狀態
       setIsLoading(false)
     }
+
   }
-}
 
   const handleGuestMode = () => {
     // 設置訪客模式標記到 localStorage
