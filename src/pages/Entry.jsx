@@ -291,8 +291,8 @@ function Entry() {
     })
     
     try {
-      // 檢測是否為手機設備
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768
+      // 檢測是否為手機設備 - 暫時測試：讓所有設備都使用彈出視窗
+      const isMobile = false // 原本: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768
       
       if (isMobile) {
         // 手機設備使用重定向方式
