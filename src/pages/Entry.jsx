@@ -225,7 +225,6 @@ function Entry() {
           navigate('/home')
         }
         setIsLoading(false)
-      }
     } catch (error) {
       console.error('Google登入失敗：', error)
       
