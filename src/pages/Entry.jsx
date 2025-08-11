@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider } from 'firebase/auth'
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { auth, db } from '../firebase'
 import { doc, setDoc, serverTimestamp, Timestamp, getDoc } from 'firebase/firestore'
 
@@ -12,7 +12,6 @@ function Entry() {
   const [isLoading, setIsLoading] = useState(false)
   const [showWelcomeModal, setShowWelcomeModal] = useState(true)
   const [isDesktop, setIsDesktop] = useState(false)
-  const [isProcessingRedirect, setIsProcessingRedirect] = useState(false)
 
   useEffect(() => {
     const checkScreenSize = () => {
@@ -25,46 +24,19 @@ function Entry() {
     return () => window.removeEventListener('resize', checkScreenSize)
   }, [])
 
-  // 檢查未完成的Google登入流程和網路狀態
+  // 網路狀態監聽
   useEffect(() => {
-    // 檢查是否有未完成的Google登入嘗試
-    const checkPendingAuth = () => {
-      const authAttempt = localStorage.getItem('googleAuthAttempt')
-      const authTimestamp = localStorage.getItem('googleAuthTimestamp')
-      
-      if (authAttempt === 'true' && authTimestamp) {
-        const timestamp = parseInt(authTimestamp)
-        const now = Date.now()
-        const timeDiff = now - timestamp
-        
-        // 如果超過5分鐘，清除過期的登入嘗試
-        if (timeDiff > 5 * 60 * 1000) {
-          localStorage.removeItem('googleAuthAttempt')
-          localStorage.removeItem('googleAuthTimestamp')
-          console.warn('清除過期的Google登入嘗試')
-        } else {
-          // 顯示正在處理的狀態
-          setIsProcessingRedirect(true)
-        }
-      }
-    }
-    
-    // 網路狀態變化監聽
     const handleOnline = () => {
       console.log('網路連接已恢復')
     }
     
     const handleOffline = () => {
       console.warn('網路連接已斷開')
-      // 如果正在處理登入，顯示提示
-      if (isLoading || isProcessingRedirect) {
+      if (isLoading) {
         alert('網路連接已斷開，請檢查網路後重試')
         setIsLoading(false)
-        setIsProcessingRedirect(false)
       }
     }
-    
-    checkPendingAuth()
     
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
@@ -73,143 +45,9 @@ function Entry() {
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
     }
-  }, [isLoading, isProcessingRedirect])
+  }, [isLoading])
 
-  // 處理 Google 登入重定向結果
-  useEffect(() => {
-    const handleRedirectResult = async () => {
-      try {
-        setIsProcessingRedirect(true)
-        
-        // 添加重試機制
-        let retryCount = 0
-        const maxRetries = 3
-        let result = null
-        
-        while (retryCount < maxRetries && !result) {
-          try {
-            result = await getRedirectResult(auth)
-            break
-          } catch (retryError) {
-            retryCount++
-            console.warn(`重定向結果獲取失敗，重試 ${retryCount}/${maxRetries}:`, retryError)
-            if (retryCount < maxRetries) {
-              // 等待1秒後重試
-              await new Promise(resolve => setTimeout(resolve, 1000))
-            } else {
-              throw retryError
-            }
-          }
-        }
-        
-        if (result) {
-          const user = result.user
-          
-          // 保存登入狀態到localStorage，防止狀態丟失
-          localStorage.setItem('googleAuthInProgress', 'true')
-          localStorage.setItem('googleAuthUser', JSON.stringify({
-            uid: user.uid,
-            displayName: user.displayName,
-            email: user.email
-          }))
-          
-          // 檢查用戶是否已存在於Firestore
-          const userDocRef = doc(db, 'users', user.uid)
-          let userDoc
-          
-          // 添加Firestore查詢重試機制
-          let firestoreRetryCount = 0
-          while (firestoreRetryCount < maxRetries) {
-            try {
-              userDoc = await getDoc(userDocRef)
-              break
-            } catch (firestoreError) {
-              firestoreRetryCount++
-              console.warn(`Firestore查詢失敗，重試 ${firestoreRetryCount}/${maxRetries}:`, firestoreError)
-              if (firestoreRetryCount < maxRetries) {
-                await new Promise(resolve => setTimeout(resolve, 1000))
-              } else {
-                throw firestoreError
-              }
-            }
-          }
-          
-          if (!userDoc.exists()) {
-            // 新用戶，創建用戶資料
-            const trialEnds = Timestamp.fromDate(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000))
-            
-            // 添加用戶創建重試機制
-            let createUserRetryCount = 0
-            while (createUserRetryCount < maxRetries) {
-              try {
-                await setDoc(userDocRef, {
-                  displayName: user.displayName,
-                  email: user.email,
-                  createdAt: serverTimestamp(),
-                  isPaid: false,
-                  trialEnds: trialEnds,
-                })
-                break
-              } catch (createError) {
-                createUserRetryCount++
-                console.warn(`用戶創建失敗，重試 ${createUserRetryCount}/${maxRetries}:`, createError)
-                if (createUserRetryCount < maxRetries) {
-                  await new Promise(resolve => setTimeout(resolve, 1000))
-                } else {
-                  throw createError
-                }
-              }
-            }
-            
-            // 清除臨時狀態並跳轉
-            localStorage.removeItem('googleAuthInProgress')
-            localStorage.removeItem('googleAuthUser')
-            localStorage.removeItem('isGuestMode')
-            navigate('/register-success')
-          } else {
-            // 現有用戶直接跳轉到首頁
-            localStorage.removeItem('googleAuthInProgress')
-            localStorage.removeItem('googleAuthUser')
-            localStorage.removeItem('isGuestMode')
-            navigate('/home')
-          }
-        } else {
-          // 檢查是否有未完成的Google登入流程
-          const authInProgress = localStorage.getItem('googleAuthInProgress')
-          if (authInProgress === 'true') {
-            // 清除未完成的登入狀態
-            localStorage.removeItem('googleAuthInProgress')
-            localStorage.removeItem('googleAuthUser')
-            console.warn('檢測到未完成的Google登入流程，已清除相關狀態')
-          }
-        }
-      } catch (error) {
-        console.error('處理重定向結果失敗：', error)
-        
-        // 清除可能的殘留狀態
-        localStorage.removeItem('googleAuthInProgress')
-        localStorage.removeItem('googleAuthUser')
-        
-        // 根據錯誤類型提供不同的提示
-        let errorMessage = 'Google登入失敗'
-        if (error.code === 'auth/network-request-failed') {
-          errorMessage = '網路連接失敗，請檢查網路連接後重試'
-        } else if (error.code === 'auth/too-many-requests') {
-          errorMessage = '請求過於頻繁，請稍後再試'
-        } else if (error.code === 'auth/popup-closed-by-user') {
-          errorMessage = '登入已取消'
-        } else if (error.message) {
-          errorMessage += '：' + error.message
-        }
-        
-        alert(errorMessage)
-      } finally {
-        setIsProcessingRedirect(false)
-      }
-    }
 
-    handleRedirectResult()
-  }, [navigate])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -291,32 +129,8 @@ function Entry() {
     })
     
     try {
-      // 檢測是否為手機設備 - 暫時測試：讓所有設備都使用彈出視窗
-      const isMobile = false // 原本: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768
-      
-      if (isMobile) {
-        // 手機設備使用重定向方式
-        setIsLoading(true)
-        
-        // 保存重定向前的狀態
-        localStorage.setItem('googleAuthAttempt', 'true')
-        localStorage.setItem('googleAuthTimestamp', Date.now().toString())
-        
-        // 短暫延遲讓用戶看到loading狀態和提示
-        await new Promise(resolve => setTimeout(resolve, 500))
-        
-        try {
-          await signInWithRedirect(auth, provider)
-          // 重定向後的處理在 useEffect 中完成
-        } catch (redirectError) {
-          // 清除重定向狀態
-          localStorage.removeItem('googleAuthAttempt')
-          localStorage.removeItem('googleAuthTimestamp')
-          throw redirectError
-        }
-      } else {
-        // 桌面設備使用彈出視窗方式
-        setIsLoading(true)
+      // 統一使用彈出視窗登入方式（解決手機重定向問題）
+      setIsLoading(true)
         
         let result
         let retryCount = 0
@@ -415,9 +229,7 @@ function Entry() {
     } catch (error) {
       console.error('Google登入失敗：', error)
       
-      // 清除可能的殘留狀態
-      localStorage.removeItem('googleAuthAttempt')
-      localStorage.removeItem('googleAuthTimestamp')
+      // 清除可能的殘留狀態（保留以防萬一）
       
       // 根據錯誤類型提供不同的提示
       let errorMessage = 'Google登入失敗'
@@ -541,11 +353,11 @@ function Entry() {
           />
           <button
             type="submit"
-            disabled={isLoading || isProcessingRedirect}
+            disabled={isLoading}
             className="w-full bg-gray-200 text-gray-800 border border-gray-400 rounded hover:bg-gray-300 transition duration-200 font-medium mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{padding: '1rem 2rem', fontSize: '1.125rem', minHeight: '3.5rem'}}
           >
-            {isProcessingRedirect ? '正在處理Google登入...' : isLoading ? '處理中...' : '註冊/登入'}
+            {isLoading ? '處理中...' : '註冊/登入'}
           </button>
         </form>
       </div>
@@ -554,13 +366,11 @@ function Entry() {
       <div className={`w-full max-w-sm flex gap-4 ${showWelcomeModal ? 'opacity-75' : ''}`} style={{maxWidth: isDesktop ? '420px' : '320px', margin: '0 auto', marginTop: '6rem', display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
         <button 
           onClick={handleGoogleLogin}
-          disabled={isLoading || isProcessingRedirect}
+          disabled={isLoading}
           className="flex-1 bg-gray-200 border border-gray-400 text-gray-800 rounded-full hover:bg-gray-300 transition duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed relative z-50 flex items-center justify-center gap-2"
           style={{padding: '1rem 1rem', fontSize: '1rem', minHeight: '3.5rem'}}
         >
-          {isProcessingRedirect ? (
-            '正在處理Google登入...'
-          ) : isLoading ? (
+          {isLoading ? (
             '連接Google中...'
           ) : (
             <>
