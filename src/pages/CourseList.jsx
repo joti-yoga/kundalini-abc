@@ -5,6 +5,34 @@ import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 
+// YouTube 新手必修影片資料
+const beginnerCoursesVideos = [
+  {
+    id: "beginner-1",
+    title: "昆達里尼瑜伽基礎入門",
+    description: "專為新手設計的基礎課程，學習正確的呼吸技巧和基本體式",
+    duration: "45分鐘",
+    youtubeId: "tvkcOmfXQuE",
+    thumbnail: `https://img.youtube.com/vi/tvkcOmfXQuE/maxresdefault.jpg`
+  },
+  {
+    id: "beginner-2",
+    title: "調頻與冥想入門",
+    description: "學習基本的調頻技巧和簡單的冥想練習",
+    duration: "30分鐘",
+    youtubeId: "e_esmWeX2Oc",
+    thumbnail: `https://img.youtube.com/vi/e_esmWeX2Oc/maxresdefault.jpg`
+  },
+  {
+    id: "beginner-3",
+    title: "基礎體式練習",
+    description: "學習昆達里尼瑜伽的基本體式和動作序列",
+    duration: "40分鐘",
+    youtubeId: "BvcoNwATUW4",
+    thumbnail: `https://img.youtube.com/vi/BvcoNwATUW4/maxresdefault.jpg`
+  }
+];
+
 // YouTube 完整課程影片資料
 const completeCoursesVideos = [
   {
@@ -67,6 +95,7 @@ export default function CourseList() {
   
   const [selectedCourses, setSelectedCourses] = useState({});
   const [expandedSections, setExpandedSections] = useState({
+    beginner: false,
     complete: false,
     playlist: false,
     custom: false
@@ -366,6 +395,60 @@ export default function CourseList() {
         )}
         {/* 三個主要按鈕區域 */}
         <div className="space-y-6">
+          {/* 新手必修 */}
+          <div className="bg-green-100 rounded-xl shadow">
+            <button
+              onClick={() => toggleSection('beginner')}
+              className="w-full p-4 text-left text-4xl font-semibold text-gray-700 hover:bg-green-200 rounded-xl transition flex justify-between items-center"
+              style={{ fontSize: '2.25rem' }}
+            >
+              新手必修
+              <span className="text-2xl" style={{ fontSize: '1.5rem' }}>{expandedSections.beginner ? '▼' : '▶'}</span>
+            </button>
+            {expandedSections.beginner && (
+              <div className="p-4 pt-0">
+                <div className="space-y-4">
+                  {beginnerCoursesVideos.map(video => (
+                    <div key={video.id} className="bg-green-200 p-4 rounded-lg">
+                      <div className="flex flex-col gap-4">
+                        {/* 影片封面 */}
+                        <div className="flex-shrink-0">
+                          <img 
+                            src={video.thumbnail} 
+                            alt={video.title}
+                            className="w-6 h-4 sm:w-32 sm:h-20 object-cover rounded cursor-pointer hover:opacity-80 transition mx-auto border-2 border-green-500"
+                            onClick={() => handleVideoPlay(video.youtubeId)}
+                          />
+                        </div>
+                        
+                        {/* 影片資訊 */}
+                        <div className="flex-1">
+                          <h3 className="text-2xl font-semibold text-gray-800 mb-2" style={{ fontSize: '1.5rem' }}>{video.title}</h3>
+                          <p className="text-gray-600 text-base mb-3" style={{ fontSize: '1rem' }}>{video.description}</p>
+                          <div className="flex flex-col gap-3">
+                            <span className="text-base font-medium text-gray-700 bg-white px-2 py-1 rounded w-fit" style={{ fontSize: '1rem' }}>
+                              時長: {video.duration}
+                            </span>
+                            <button 
+                              onClick={() => handleVideoPlay(video.youtubeId)}
+                              className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition flex items-center justify-center gap-2 w-full text-base"
+                              style={{ fontSize: '1rem' }}
+                            >
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
+                              </svg>
+                              {isGuestMode ? '觀看影片 (限1分鐘)' : '觀看影片'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* 完整課 */}
           <div className="bg-yellow-100 rounded-xl shadow">
             <button
