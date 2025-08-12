@@ -4,16 +4,53 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
+import styled from 'styled-components';
+
+// Styled Components 用於動態間距控制
+const StyledVideoTitle = styled.h3`
+  font-size: 1.5rem;
+  color: #1f2937;
+  font-weight: 600;
+  margin-bottom: ${props => props.$isMobile ? '0.05rem' : '0.5rem'};
+`;
+
+const StyledVideoDescription = styled.p`
+  font-size: 1rem;
+  color: #4b5563;
+  margin-bottom: ${props => props.$isMobile ? '0.1rem' : '0.75rem'};
+`;
+
+// 自定義 Hook 來監聽視窗大小
+const useWindowSize = () => {
+  const [windowSize, setWindowSize] = useState({
+    width: typeof window !== 'undefined' ? window.innerWidth : 0,
+    height: typeof window !== 'undefined' ? window.innerHeight : 0,
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  return windowSize;
+};
 
 // YouTube 新手必修影片資料
 const beginnerCoursesVideos = [
   {
     id: "beginner-1",
-    title: "昆達里尼瑜伽基礎入門",
-    description: "專為新手設計的基礎課程，學習正確的呼吸技巧和基本體式",
-    duration: "45分鐘",
-    youtubeId: "tvkcOmfXQuE",
-    thumbnail: `https://img.youtube.com/vi/tvkcOmfXQuE/maxresdefault.jpg`
+    title: "深長呼吸",
+    description: "呼吸就是最好的藥—昆達里尼瑜伽「神經淨化呼吸法」：【深長呼吸】完整教學｜同步改善肺部功能＋憂鬱預防，科學驗證的冷靜耐心養成術",
+    duration: "5分鐘01秒",
+    youtubeId: "f07tEDlzB5c",
+    thumbnail: `https://img.youtube.com/vi/f07tEDlzB5c/maxresdefault.jpg`
   },
   {
     id: "beginner-2",
@@ -92,6 +129,10 @@ export default function CourseList() {
   const [user, loading, error] = useAuthState(auth);
   const [userData, setUserData] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const windowSize = useWindowSize();
+  const isMobile = windowSize.width <= 767;
+
+  // 不再需要 useEffect 來修改 CSS 變數，styled-components 會自動處理
   
   const [selectedCourses, setSelectedCourses] = useState({});
   const [expandedSections, setExpandedSections] = useState({
@@ -299,7 +340,7 @@ export default function CourseList() {
             </h1>
             
             {/* 右側導航區域 */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center" style={{gap: '16px'}}>
               {/* 歡迎詞 */}
               <span className="text-white text-sm">
                 Hi, {getDisplayName()}
@@ -307,8 +348,17 @@ export default function CourseList() {
               
               {/* 導航按鈕 */}
               <Link 
+                to="/home" 
+                className="px-3 py-2 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition"
+                style={{marginLeft: '16px'}}
+              >
+                回主選單
+              </Link>
+              
+              <Link 
                 to="/practice-calendar" 
                 className="px-3 py-2 text-sm bg-yellow-100 text-yellow-700 rounded-md hover:bg-yellow-200 transition"
+                style={{marginLeft: '16px'}}
               >
                 練習日曆
               </Link>
@@ -316,6 +366,7 @@ export default function CourseList() {
               <Link 
                 to="/community" 
                 className="px-3 py-2 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 transition"
+                style={{marginLeft: '16px'}}
               >
                 社群互動
               </Link>
@@ -323,6 +374,7 @@ export default function CourseList() {
               <button 
                 onClick={handleLogout}
                 className="px-3 py-2 text-sm bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition"
+                style={{marginLeft: '16px'}}
               >
                 登出
               </button>
@@ -339,7 +391,7 @@ export default function CourseList() {
             </div>
             
             {/* 按鈕行 - 靠右對齊 */}
-            <div className="flex justify-end items-center space-x-2">
+            <div className="flex justify-end items-center" style={{gap: '8px'}}>
               {/* 歡迎詞 */}
               <span className="text-white text-xs mr-2">
                 Hi, {getDisplayName()}
@@ -347,8 +399,17 @@ export default function CourseList() {
               
               {/* 導航按鈕 */}
               <Link 
+                to="/home" 
+                className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition"
+                style={{marginLeft: '8px'}}
+              >
+                回主選單
+              </Link>
+              
+              <Link 
                 to="/practice-calendar" 
                 className="px-2 py-1 text-xs bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200 transition"
+                style={{marginLeft: '8px'}}
               >
                 練習日曆
               </Link>
@@ -356,6 +417,7 @@ export default function CourseList() {
               <Link 
                 to="/community" 
                 className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition"
+                style={{marginLeft: '8px'}}
               >
                 社群互動
               </Link>
@@ -410,35 +472,26 @@ export default function CourseList() {
                 <div className="space-y-4">
                   {beginnerCoursesVideos.map(video => (
                     <div key={video.id} className="bg-green-200 p-4 rounded-lg">
-                      <div className="flex flex-col gap-4">
+                      <div className="flex flex-col video-card-mobile gap-4">
                         {/* 影片封面 */}
                         <div className="flex-shrink-0">
                           <img 
                             src={video.thumbnail} 
                             alt={video.title}
-                            className="w-6 h-4 sm:w-32 sm:h-20 object-cover rounded cursor-pointer hover:opacity-80 transition mx-auto border-2 border-green-500"
+                            className="video-thumbnail video-thumbnail-mobile object-cover rounded cursor-pointer hover:opacity-80 transition mx-auto sm:mx-0 border-2 border-green-500"
                             onClick={() => handleVideoPlay(video.youtubeId)}
                           />
                         </div>
                         
                         {/* 影片資訊 */}
-                        <div className="flex-1">
-                          <h3 className="text-2xl font-semibold text-gray-800 mb-2" style={{ fontSize: '1.5rem' }}>{video.title}</h3>
-                          <p className="text-gray-600 text-base mb-3" style={{ fontSize: '1rem' }}>{video.description}</p>
+                        <div className="flex-1 video-info-mobile">
+                          <StyledVideoTitle $isMobile={isMobile}>{video.title}</StyledVideoTitle>
+                          <StyledVideoDescription $isMobile={isMobile}>{video.description}</StyledVideoDescription>
                           <div className="flex flex-col gap-3">
                             <span className="text-base font-medium text-gray-700 bg-white px-2 py-1 rounded w-fit" style={{ fontSize: '1rem' }}>
                               時長: {video.duration}
                             </span>
-                            <button 
-                              onClick={() => handleVideoPlay(video.youtubeId)}
-                              className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition flex items-center justify-center gap-2 w-full text-base"
-                              style={{ fontSize: '1rem' }}
-                            >
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
-                              </svg>
-                              {isGuestMode ? '觀看影片 (限1分鐘)' : '觀看影片'}
-                            </button>
+
                           </div>
                         </div>
                       </div>
@@ -464,35 +517,26 @@ export default function CourseList() {
                 <div className="space-y-4">
                   {completeCoursesVideos.map(video => (
                     <div key={video.id} className="bg-yellow-200 p-4 rounded-lg">
-                      <div className="flex flex-col gap-4">
+                      <div className="flex flex-col video-card-mobile gap-4">
                         {/* 影片封面 */}
                         <div className="flex-shrink-0">
                           <img 
                             src={video.thumbnail} 
                             alt={video.title}
-                            className="w-6 h-4 sm:w-32 sm:h-20 object-cover rounded cursor-pointer hover:opacity-80 transition mx-auto border-2 border-red-500"
+                            className="video-thumbnail video-thumbnail-mobile object-cover rounded cursor-pointer hover:opacity-80 transition mx-auto sm:mx-0 border-2 border-red-500"
                             onClick={() => handleVideoPlay(video.youtubeId)}
                           />
                         </div>
                         
                         {/* 影片資訊 */}
-                        <div className="flex-1">
-                          <h3 className="text-2xl font-semibold text-gray-800 mb-2" style={{ fontSize: '1.5rem' }}>{video.title}</h3>
-                          <p className="text-gray-600 text-base mb-3" style={{ fontSize: '1rem' }}>{video.description}</p>
+                        <div className="flex-1 video-info-mobile">
+                          <StyledVideoTitle $isMobile={isMobile}>{video.title}</StyledVideoTitle>
+                          <StyledVideoDescription $isMobile={isMobile}>{video.description}</StyledVideoDescription>
                           <div className="flex flex-col gap-3">
                             <span className="text-base font-medium text-gray-700 bg-white px-2 py-1 rounded w-fit" style={{ fontSize: '1rem' }}>
                               時長: {video.duration}
                             </span>
-                            <button 
-                              onClick={() => handleVideoPlay(video.youtubeId)}
-                              className="bg-yellow-400 text-white px-4 py-2 rounded-lg hover:bg-yellow-500 transition flex items-center justify-center gap-2 w-full text-base"
-                              style={{ fontSize: '1rem' }}
-                            >
-                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
-                              </svg>
-                              {isGuestMode ? '觀看影片 (限1分鐘)' : '觀看影片'}
-                            </button>
+
                           </div>
                         </div>
                       </div>
@@ -611,7 +655,7 @@ export default function CourseList() {
                                       <img 
                                         src={option.thumbnail} 
                                         alt={option.title}
-                                        className="w-12 h-8 sm:w-16 sm:h-10 object-cover rounded cursor-pointer hover:opacity-80 transition"
+                                        className="video-thumbnail object-cover rounded cursor-pointer hover:opacity-80 transition"
                                         onClick={() => window.open(`https://www.youtube.com/watch?v=${option.youtubeId}`, '_blank')}
                                       />
                                     </div>
@@ -619,7 +663,7 @@ export default function CourseList() {
                                   {/* 預留位置的佔位符 */}
                                   {option.thumbnail === "" && (
                                     <div className="flex-shrink-0">
-                                      <div className="w-12 h-8 sm:w-16 sm:h-10 bg-gray-200 rounded flex items-center justify-center text-gray-400 text-xs">
+                                      <div className="video-thumbnail bg-gray-200 rounded flex items-center justify-center text-gray-400 text-xs">
                                         待上傳
                                       </div>
                                     </div>

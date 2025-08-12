@@ -71,6 +71,11 @@ export default {
         '88': '22rem',
         '128': '32rem',
         '144': '36rem',
+        // 自定義手機間距
+        'mobile-title': '0.1rem',
+        'mobile-desc': '0.2rem',
+        'desktop-title': '0.5rem',
+        'desktop-desc': '0.75rem',
       },
       
       // 圓角系統

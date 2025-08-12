@@ -46,6 +46,54 @@
       text-shadow: 0 0 10px #fde68a, 0 0 20px #facc15;
     }
   }
+
+  /* CSS 變數用於動態間距控制 */
+  :root {
+    --title-margin-bottom: 0.5rem;
+    --description-margin-bottom: 0.75rem;
+  }
+
+  .video-title {
+    margin-bottom: var(--title-margin-bottom) !important;
+  }
+
+  .video-description {
+    margin-bottom: var(--description-margin-bottom) !important;
+  }
+
+  /* 影片縮圖響應式尺寸 */
+  .video-thumbnail {
+    /* 手機版預設尺寸 (保持不變) */
+    width: 200px;
+    height: 120px;
+  }
+
+  /* 電腦版 (≥768px) - 放大2倍 */
+  @media (min-width: 768px) {
+    .video-thumbnail {
+      width: 400px;
+      height: 240px;
+    }
+  }
+
+  /* 手機版水平佈局 */
+  @media (max-width: 767px) {
+    .video-card-mobile {
+      flex-direction: row !important;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .video-thumbnail-mobile {
+      flex-shrink: 0;
+      width: 120px;
+      height: 72px;
+    }
+    .video-info-mobile {
+      flex: 1;
+      min-width: 0; /* 防止文字溢出 */
+    }
+    /* 移除了衝突的 margin-bottom 規則，讓 styled-components 控制間距 */
+  }
 }
 
 /* postcss-disable-next-line */
