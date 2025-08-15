@@ -79,7 +79,7 @@ const completeCoursesVideos = [
     title: "拜日式熱身+提升的奎亞+克爾坦奎亞SaTaNaMa唱誦冥想",
     description: "適合初學者的完整昆達里尼瑜伽課程，包含調頻、熱身、體式、放鬆、冥想和結束祈禱",
     duration: "1.5小時",
-    youtubeId: "dQw4w9WgXcQ",
+    youtubeId: "q19x_KVHico",
     thumbnail: "https://img.youtube.com/vi/q19x_KVHico/maxresdefault.jpg"
   }
 ];
