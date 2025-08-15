@@ -1,12 +1,38 @@
 // src/pages/PracticeCalendar.jsx
 import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth, db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
 
 
 
 export default function PracticeCalendar() {
+  const [user] = useAuthState(auth);
+  const [userData, setUserData] = useState(null);
+  const navigate = useNavigate();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [practiceRecords, setPracticeRecords] = useState({});
+
+  // 載入用戶資料
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (user) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            setUserData(userDoc.data());
+          }
+        } catch (error) {
+          console.error('獲取用戶資料失敗:', error);
+        }
+      }
+    };
+
+    fetchUserData();
+  }, [user]);
 
   // 載入練習記錄
   useEffect(() => {
@@ -35,6 +61,16 @@ export default function PracticeCalendar() {
   const [noteContent, setNoteContent] = useState('');
   const [noteVisibility, setNoteVisibility] = useState('private');
   const [noteType, setNoteType] = useState('experience');
+
+  // 登出功能
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      navigate('/entry');
+    } catch (error) {
+      console.error('登出失敗:', error);
+    }
+  };
 
   // 獲取當前月份的日期數組
   const getDaysInMonth = (date) => {
@@ -108,14 +144,24 @@ export default function PracticeCalendar() {
       createdAt: new Date().toISOString()
     };
     
-    setPracticeRecords(prev => ({
-      ...prev,
+    const updatedRecords = {
+      ...practiceRecords,
       [dateKey]: {
-        ...prev[dateKey],
-        courses: prev[dateKey]?.courses || [],
-        notes: [...(prev[dateKey]?.notes || []), newNote]
+        ...practiceRecords[dateKey],
+        courses: practiceRecords[dateKey]?.courses || [],
+        notes: [...(practiceRecords[dateKey]?.notes || []), newNote]
       }
-    }));
+    };
+    
+    // 更新 state
+    setPracticeRecords(updatedRecords);
+    
+    // 保存到 localStorage
+    try {
+      localStorage.setItem('practiceRecords', JSON.stringify(updatedRecords));
+    } catch (error) {
+      console.error('保存心得記錄失敗:', error);
+    }
     
     setNoteContent('');
     setShowNoteModal(false);
@@ -126,12 +172,99 @@ export default function PracticeCalendar() {
 
   return (
     <div className="min-h-screen bg-yellow-50">
-      {/* 標題 */}
-      <div className="w-full py-6 text-center" style={{ backgroundColor: '#999700' }}>
-        <h1 className="text-xl font-bold text-white" style={{ fontSize: '2rem' }}>練習日曆</h1>
+      {/* Fixed Top Banner */}
+      <div className="fixed top-0 left-0 right-0 w-full z-40 shadow-md" style={{ backgroundColor: '#fef3c7' }}>
+        <div className="w-full px-6 py-4">
+          {/* Desktop Layout */}
+          <div className="hidden md:flex justify-between items-center">
+            <h1 className="text-2xl font-bold" style={{ color: '#999700' }}>
+              Joti's昆達里尼ABC瑜伽
+            </h1>
+            
+            <div className="flex items-center" style={{gap: '16px'}}>
+              <span className="text-sm" style={{ color: '#999700' }}>
+                Hi, {user ? (userData?.displayName || user.email) : '訪客'}
+              </span>
+              
+              <Link 
+                to="/home" 
+                className="text-sm px-3 py-1 rounded transition" 
+                style={{ color: '#999700', backgroundColor: 'rgba(153, 151, 0, 0.1)' }}
+              >
+                回主選單
+              </Link>
+              <Link 
+                to="/course-list"
+                className="text-sm px-3 py-1 rounded transition" 
+                style={{ color: '#999700', backgroundColor: 'rgba(153, 151, 0, 0.1)' }}
+              >
+                課程列表
+              </Link>
+              <Link 
+                to="/community" 
+                className="text-sm px-3 py-1 rounded transition" 
+                style={{ color: '#999700', backgroundColor: 'rgba(153, 151, 0, 0.1)' }}
+              >
+                社群互動
+              </Link>
+              <button 
+                onClick={handleLogout}
+                className="text-sm px-3 py-1 rounded transition" 
+                style={{ color: '#999700', backgroundColor: 'rgba(153, 151, 0, 0.1)' }}
+              >
+                登出
+              </button>
+            </div>
+          </div>
+          
+          {/* Mobile Layout */}
+          <div className="md:hidden">
+            <div className="mb-3">
+              <h1 className="text-xl font-bold" style={{ color: '#999700' }}>
+                Joti's昆達里尼ABC瑜伽
+              </h1>
+            </div>
+            
+            <div className="flex justify-end items-center" style={{gap: '8px'}}>
+              <span className="text-xs mr-2" style={{ color: '#999700' }}>
+                Hi, {user ? (userData?.displayName || user.email) : '訪客'}
+              </span>
+              
+              <Link 
+                 to="/home" 
+                 className="text-xs px-2 py-1 rounded transition" 
+                 style={{ color: '#999700', backgroundColor: 'rgba(153, 151, 0, 0.1)' }}
+               >
+                 回主選單
+               </Link>
+              <Link 
+                to="/course-list" 
+                className="text-xs px-2 py-1 rounded transition" 
+                style={{ color: '#999700', backgroundColor: 'rgba(153, 151, 0, 0.1)' }}
+              >
+                課程列表
+              </Link>
+              <Link 
+                to="/community" 
+                className="text-xs px-2 py-1 rounded transition" 
+                style={{ color: '#999700', backgroundColor: 'rgba(153, 151, 0, 0.1)' }}
+              >
+                社群互動
+              </Link>
+              <button 
+                onClick={handleLogout}
+                className="text-xs px-2 py-1 rounded transition" 
+                style={{ color: '#999700', backgroundColor: 'rgba(153, 151, 0, 0.1)' }}
+              >
+                登出
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="p-4 max-w-4xl mx-auto">
+      {/* Main Content */}
+      <div className="p-4 max-w-4xl mx-auto" style={{ paddingTop: '120px' }}>
         {/* 月份導航 */}
         <div className="flex items-center justify-between mb-6 bg-white rounded-lg shadow p-4">
           <button
@@ -242,11 +375,11 @@ export default function PracticeCalendar() {
 
                 {/* 心得記錄 */}
                 {selectedDateRecords.notes && selectedDateRecords.notes.length > 0 && (
-                  <div>
-                    <h4 className="text-md font-semibold text-gray-700 mb-3">練習心得</h4>
-                    <div className="space-y-3">
+                  <div className="w-full">
+                    <h4 className="text-md font-semibold text-gray-700 mb-3 text-center">練習心得</h4>
+                    <div className="flex flex-col items-center space-y-3">
                       {selectedDateRecords.notes.map((note, index) => (
-                        <div key={index} className="bg-gray-50 p-4 rounded-lg border">
+                        <div key={index} className="bg-gray-50 p-4 rounded-lg border w-full max-w-2xl">
                           <div className="flex justify-between items-start mb-2">
                             <div className="flex items-center gap-2">
                               <span className={`
@@ -291,8 +424,8 @@ export default function PracticeCalendar() {
 
       {/* 新增心得模態框 */}
       {showNoteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <h3 className="text-lg font-semibold mb-4">記錄練習心得</h3>
               

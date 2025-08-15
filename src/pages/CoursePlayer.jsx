@@ -1,83 +1,153 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import ReactPlayer from 'react-player';
 
-// 課程數據（與CourseList.jsx保持一致）
+// 課程數據（重構為平台無關格式）
 const mockCourses = [
   { id: "1", title: "1. 調頻", options: [
-      { id: "1-1", title: "調頻影片 1", duration: 10, description: "10 分鐘調頻練習", youtubeId: "tvkcOmfXQuE", thumbnail: "https://img.youtube.com/vi/tvkcOmfXQuE/maxresdefault.jpg" },
-      { id: "1-2", title: "調頻影片 2", duration: 15, description: "15 分鐘調頻練習", youtubeId: "", thumbnail: "" },
-      { id: "1-3", title: "調頻影片 3", duration: 20, description: "20 分鐘調頻練習", youtubeId: "", thumbnail: "" }
+      { id: "1-1", title: "調頻影片 1", duration: 10, description: "10 分鐘調頻練習", video: { url: "https://www.youtube.com/watch?v=tvkcOmfXQuE", platform: "youtube" } }
   ] },
   { id: "2", title: "2. 熱身（呼吸/動作）", options: [
-      { id: "2-1", title: "熱身影片 1", duration: 15, description: "15 分鐘熱身", youtubeId: "e_esmWeX2Oc", thumbnail: "https://img.youtube.com/vi/e_esmWeX2Oc/maxresdefault.jpg" },
-      { id: "2-2", title: "熱身影片 2", duration: 20, description: "20 分鐘熱身", youtubeId: "HTV4E4ornUA", thumbnail: "https://img.youtube.com/vi/HTV4E4ornUA/maxresdefault.jpg" },
-      { id: "2-3", title: "熱身影片 3", duration: 25, description: "25 分鐘熱身", youtubeId: "", thumbnail: "" },
-      { id: "2-4", title: "熱身影片 4", duration: 30, description: "30 分鐘熱身", youtubeId: "", thumbnail: "" },
-      { id: "2-5", title: "熱身影片 5", duration: 35, description: "35 分鐘熱身", youtubeId: "", thumbnail: "" },
-      { id: "2-6", title: "熱身影片 6", duration: 40, description: "40 分鐘熱身", youtubeId: "", thumbnail: "" },
-      { id: "2-7", title: "熱身影片 7", duration: 45, description: "45 分鐘熱身", youtubeId: "", thumbnail: "" },
-      { id: "2-8", title: "熱身影片 8", duration: 50, description: "50 分鐘熱身", youtubeId: "", thumbnail: "" }
+      { id: "2-1", title: "熱身影片 1", duration: 15, description: "15 分鐘熱身", video: { url: "https://www.youtube.com/watch?v=e_esmWeX2Oc", platform: "youtube" } },
+      { id: "2-2", title: "熱身影片 2", duration: 20, description: "20 分鐘熱身", video: { url: "https://www.youtube.com/watch?v=HTV4E4ornUA", platform: "youtube" } }
   ] },
   { id: "3", title: "3. 體式動作序列/身體奎亞", options: [
-      { id: "3-1", title: "體式動作影片 1", duration: 25, description: "25 分鐘體式動作", youtubeId: "BvcoNwATUW4", thumbnail: "https://img.youtube.com/vi/BvcoNwATUW4/maxresdefault.jpg" },
-      { id: "3-2", title: "體式動作影片 2", duration: 30, description: "30 分鐘體式動作", youtubeId: "ASHd6cEdKRs", thumbnail: "https://img.youtube.com/vi/ASHd6cEdKRs/maxresdefault.jpg" }
+      { id: "3-1", title: "體式動作影片 1", duration: 25, description: "25 分鐘體式動作", video: { url: "https://www.youtube.com/watch?v=BvcoNwATUW4", platform: "youtube" } },
+      { id: "3-2", title: "體式動作影片 2", duration: 30, description: "30 分鐘體式動作", video: { url: "https://www.youtube.com/watch?v=ASHd6cEdKRs", platform: "youtube" } }
   ] },
   { id: "4", title: "4. 放鬆休息", options: [
-      { id: "4-1", title: "放鬆影片 1", duration: 15, description: "15 分鐘放鬆練習", youtubeId: "Gg5F3Py8un4", thumbnail: "https://img.youtube.com/vi/Gg5F3Py8un4/maxresdefault.jpg" },
-      { id: "4-2", title: "放鬆影片 2", duration: 20, description: "20 分鐘放鬆練習", youtubeId: "JwIwBnYsVNk", thumbnail: "https://img.youtube.com/vi/JwIwBnYsVNk/maxresdefault.jpg" }
+      { id: "4-1", title: "放鬆影片 1", duration: 15, description: "15 分鐘放鬆練習", video: { url: "https://www.youtube.com/watch?v=Gg5F3Py8un4", platform: "youtube" } },
+      { id: "4-2", title: "放鬆影片 2", duration: 20, description: "20 分鐘放鬆練習", video: { url: "https://www.youtube.com/watch?v=JwIwBnYsVNk", platform: "youtube" } }
   ] },
   { id: "5", title: "5. 冥想（呼吸/唱誦）", options: [
-      { id: "5-1", title: "冥想影片 1", duration: 20, description: "20 分鐘冥想", youtubeId: "VDdVzux-7HY", thumbnail: "https://img.youtube.com/vi/VDdVzux-7HY/maxresdefault.jpg" },
-      { id: "5-2", title: "冥想影片 2", duration: 25, description: "25 分鐘冥想", youtubeId: "HTV4E4ornUA", thumbnail: "https://img.youtube.com/vi/HTV4E4ornUA/maxresdefault.jpg" },
-      { id: "5-3", title: "冥想影片 3", duration: 30, description: "30 分鐘冥想", youtubeId: "KYwWSdNb3UA", thumbnail: "https://img.youtube.com/vi/KYwWSdNb3UA/maxresdefault.jpg" },
-      { id: "5-4", title: "冥想影片 4", duration: 35, description: "35 分鐘冥想", youtubeId: "yEYFwtmMVLg", thumbnail: "https://img.youtube.com/vi/yEYFwtmMVLg/maxresdefault.jpg" },
-      { id: "5-5", title: "冥想影片 5", duration: 40, description: "40 分鐘冥想", youtubeId: "KsOP80J80T8", thumbnail: "https://img.youtube.com/vi/KsOP80J80T8/maxresdefault.jpg" },
-      { id: "5-6", title: "冥想影片 6", duration: 45, description: "45 分鐘冥想", youtubeId: "1Z4VQv71l-I", thumbnail: "https://img.youtube.com/vi/1Z4VQv71l-I/maxresdefault.jpg" },
-      { id: "5-7", title: "冥想影片 7", duration: 50, description: "50 分鐘冥想", youtubeId: "V3skjng5qP0", thumbnail: "https://img.youtube.com/vi/V3skjng5qP0/maxresdefault.jpg" },
-      { id: "5-8", title: "冥想影片 8", duration: 55, description: "55 分鐘冥想", youtubeId: "QnwrIXNddqk", thumbnail: "https://img.youtube.com/vi/QnwrIXNddqk/maxresdefault.jpg" },
-      { id: "5-9", title: "冥想影片 9", duration: 60, description: "60 分鐘冥想", youtubeId: "aCyKYSj3aU0", thumbnail: "https://img.youtube.com/vi/aCyKYSj3aU0/maxresdefault.jpg" },
-      { id: "5-10", title: "冥想影片 10", duration: 65, description: "65 分鐘冥想", youtubeId: "sip_w8Oxr6o", thumbnail: "https://img.youtube.com/vi/sip_w8Oxr6o/maxresdefault.jpg" }
+      { id: "5-1", title: "冥想影片 1", duration: 20, description: "20 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=VDdVzux-7HY", platform: "youtube" } },
+      { id: "5-2", title: "冥想影片 2", duration: 25, description: "25 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=HTV4E4ornUA", platform: "youtube" } },
+      { id: "5-3", title: "冥想影片 3", duration: 30, description: "30 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=KYwWSdNb3UA", platform: "youtube" } },
+      { id: "5-4", title: "冥想影片 4", duration: 35, description: "35 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=yEYFwtmMVLg", platform: "youtube" } },
+      { id: "5-5", title: "冥想影片 5", duration: 40, description: "40 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=KsOP80J80T8", platform: "youtube" } },
+      { id: "5-6", title: "冥想影片 6", duration: 45, description: "45 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=1Z4VQv71l-I", platform: "youtube" } },
+      { id: "5-7", title: "冥想影片 7", duration: 50, description: "50 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=V3skjng5qP0", platform: "youtube" } },
+      { id: "5-8", title: "冥想影片 8", duration: 55, description: "55 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=QnwrIXNddqk", platform: "youtube" } },
+      { id: "5-9", title: "冥想影片 9", duration: 60, description: "60 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=aCyKYSj3aU0", platform: "youtube" } },
+      { id: "5-10", title: "冥想影片 10", duration: 65, description: "65 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=sip_w8Oxr6o", platform: "youtube" } }
   ] },
   { id: "6", title: "6. 結束祈禱", options: [
-      { id: "6-1", title: "結束祈禱影片 1", duration: 10, description: "10 分鐘結束祈禱", youtubeId: "sQ6KQU2wQ_k", thumbnail: "https://img.youtube.com/vi/sQ6KQU2wQ_k/maxresdefault.jpg" }
+      { id: "6-1", title: "結束祈禱影片 1", duration: 10, description: "10 分鐘結束祈禱", video: { url: "https://www.youtube.com/watch?v=sQ6KQU2wQ_k", platform: "youtube" } }
   ] }
 ];
 
 export default function CoursePlayer() {
-  const { id } = useParams();
+  console.log('CoursePlayer component is rendering...');
+  
+  const { id, videoIds } = useParams();
+  
+  // 調試 URL 參數
+  console.log('CoursePlayer - URL params:', { id, videoIds });
+  console.log('CoursePlayer - window.location.pathname:', window.location.pathname);
+  console.log('CoursePlayer - useParams result:', useParams());
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [playlist, setPlaylist] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [userInteracted, setUserInteracted] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteContent, setNoteContent] = useState('');
   const [noteVisibility, setNoteVisibility] = useState('private');
   const [noteType, setNoteType] = useState('experience');
   const [completedVideos, setCompletedVideos] = useState([]);
+  const [videoEndedFlag, setVideoEndedFlag] = useState(false);
+  const [autoPlayTimer, setAutoPlayTimer] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [invalidVideos, setInvalidVideos] = useState([]);
+  const [showInvalidWarning, setShowInvalidWarning] = useState(false);
 
   // 根據傳入的ID獲取播放列表
   useEffect(() => {
-    if (id) {
-      const videoIds = id.split(',');
+    const paramValue = videoIds || id; // 優先使用新的 videoIds 參數
+    if (paramValue) {
+      console.log('CoursePlayer - Received parameter:', paramValue);
+      const videoIdArray = paramValue.split(',');
+      console.log('CoursePlayer - Video IDs array:', videoIdArray);
       const playlistData = [];
+      const invalidVideos = [];
       
-      videoIds.forEach(videoId => {
+      videoIdArray.forEach(videoId => {
+        console.log('CoursePlayer - Looking for video ID:', videoId);
         // 查找對應的影片數據
         for (const course of mockCourses) {
           const option = course.options.find(opt => opt.id === videoId);
           if (option) {
-            playlistData.push({
-              ...option,
-              categoryTitle: course.title
-            });
+            console.log('CoursePlayer - Found video:', option.title, 'Video URL:', option.video?.url);
+            
+            // 檢查影片URL是否有效
+            if (option.video?.url && option.video.url.trim() !== '') {
+              playlistData.push({
+                ...option,
+                categoryTitle: course.title
+              });
+            } else {
+              console.warn('CoursePlayer - Invalid video URL for:', option.title);
+              invalidVideos.push({
+                id: option.id,
+                title: option.title,
+                reason: 'Empty or missing video URL'
+              });
+            }
             break;
           }
         }
       });
       
+      console.log('CoursePlayer - Final playlist:', playlistData);
+      console.log('CoursePlayer - Invalid videos:', invalidVideos);
+      
+      // 如果有無效影片，顯示警告
+      if (invalidVideos.length > 0) {
+        console.warn(`發現 ${invalidVideos.length} 個無效影片:`, invalidVideos.map(v => v.title).join(', '));
+        setInvalidVideos(invalidVideos);
+        setShowInvalidWarning(true);
+      }
+      
       setPlaylist(playlistData);
       setIsLoading(false);
     }
-  }, [id]);
+  }, [id, videoIds]);
+
+  // 重置影片結束標記當切換影片時，並設置自動播放定時器
+  useEffect(() => {
+    setVideoEndedFlag(false);
+    
+    // 清除之前的定時器
+    if (autoPlayTimer) {
+      clearTimeout(autoPlayTimer);
+    }
+    
+    // 設置新的自動播放定時器（影片時長 + 5秒緩衝）
+    if (playlist[currentVideoIndex] && playlist[currentVideoIndex].video?.url) {
+      const videoDurationMs = playlist[currentVideoIndex].duration * 60 * 1000; // 轉換為毫秒
+      const timer = setTimeout(() => {
+        console.log('Auto-play timer triggered');
+        handleVideoEnd();
+      }, videoDurationMs + 5000); // 影片時長 + 5秒緩衝
+      
+      setAutoPlayTimer(timer);
+    }
+    
+    // 清理函數
+    return () => {
+      if (autoPlayTimer) {
+        clearTimeout(autoPlayTimer);
+      }
+    };
+  }, [currentVideoIndex, playlist]);
+  
+  // 組件卸載時清理定時器
+  useEffect(() => {
+    return () => {
+      if (autoPlayTimer) {
+        clearTimeout(autoPlayTimer);
+      }
+    };
+  }, []);
 
   // 播放下一個影片
   const playNext = () => {
@@ -100,6 +170,15 @@ export default function CoursePlayer() {
 
   // 處理影片播放結束
   const handleVideoEnd = () => {
+    if (videoEndedFlag) return; // 避免重複觸發
+    setVideoEndedFlag(true);
+    
+    // 清除自動播放定時器
+    if (autoPlayTimer) {
+      clearTimeout(autoPlayTimer);
+      setAutoPlayTimer(null);
+    }
+    
     const currentVideo = playlist[currentVideoIndex];
     if (currentVideo && !completedVideos.includes(currentVideo.id)) {
       // 記錄影片完成
@@ -122,9 +201,18 @@ export default function CoursePlayer() {
       }
       existingRecords[today].courses.push(practiceRecord);
       localStorage.setItem('practiceRecords', JSON.stringify(existingRecords));
-      
-      // 顯示心得記錄彈窗
-      setShowNoteModal(true);
+    }
+    
+    // 如果還有下一個影片，自動播放
+    if (currentVideoIndex < playlist.length - 1) {
+      console.log('Auto-playing next video...');
+      setTimeout(() => {
+        setCurrentVideoIndex(currentVideoIndex + 1);
+      }, 2000); // 2秒後自動播放下一個影片
+    } else {
+      // 播放列表結束
+      console.log('Playlist completed!');
+      alert('恭喜！您已完成整個播放列表的練習。');
     }
   };
 
@@ -189,9 +277,17 @@ export default function CoursePlayer() {
   if (playlist.length === 0) {
     return (
       <div className="min-h-screen bg-yellow-50 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">找不到影片</h2>
-          <p className="text-gray-600 mb-6">無法載入指定的播放列表，請檢查選擇的影片是否有效。</p>
+        <div className="text-center max-w-md mx-auto">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">⚠️ 播放列表無法載入</h2>
+          <div className="bg-white p-6 rounded-lg shadow-lg mb-6">
+            <p className="text-gray-600 mb-4">可能的原因：</p>
+            <ul className="text-left text-gray-600 space-y-2 mb-4">
+              <li>• 選擇的影片沒有有效的YouTube連結</li>
+              <li>• 影片ID格式不正確</li>
+              <li>• 所有選擇的影片都暫時無法播放</li>
+            </ul>
+            <p className="text-sm text-gray-500">請返回課程列表重新選擇有效的影片。</p>
+          </div>
           <Link to="/course-list" className="bg-yellow-500 text-white px-6 py-3 rounded-lg hover:bg-yellow-600 transition">
             返回課程列表
           </Link>
@@ -202,6 +298,15 @@ export default function CoursePlayer() {
 
   const currentVideo = playlist[currentVideoIndex];
   const totalDuration = playlist.reduce((sum, video) => sum + video.duration, 0);
+  
+  // 調試信息
+  console.log('=== CoursePlayer Debug Info ===');
+  console.log('CoursePlayer - Current video index:', currentVideoIndex);
+  console.log('CoursePlayer - Current video:', currentVideo);
+  console.log('CoursePlayer - Video URL:', currentVideo?.video?.url);
+  console.log('CoursePlayer - Playlist length:', playlist.length);
+  console.log('CoursePlayer - Full playlist:', playlist);
+  console.log('================================');
 
   return (
     <div className="min-h-screen bg-yellow-50">
@@ -216,6 +321,39 @@ export default function CoursePlayer() {
       </div>
 
       <div className="container mx-auto p-6">
+        {/* 無效影片警告 */}
+        {showInvalidWarning && invalidVideos.length > 0 && (
+          <div className="mb-6 bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded-md">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-yellow-800">注意：部分影片無法播放</h3>
+                <div className="mt-2 text-sm text-yellow-700">
+                  <p>以下影片因缺少有效的YouTube連結而被跳過：</p>
+                  <ul className="list-disc pl-5 mt-1 space-y-1">
+                    {invalidVideos.map((video) => (
+                      <li key={video.id}>{video.title}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="mt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowInvalidWarning(false)}
+                    className="text-xs text-yellow-800 font-medium hover:text-yellow-600"
+                  >
+                    關閉提示
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 影片播放區域 */}
           <div className="lg:col-span-2">
@@ -239,38 +377,84 @@ export default function CoursePlayer() {
                 </div>
               </div>
               
-              {/* YouTube 播放器 */}
+              {/* 播放按鈕 */}
+              {!userInteracted && (
+                <div className="p-4 text-center bg-gray-100">
+                  <button
+                     onClick={() => {
+                       console.log('=== 播放按鈕點擊調試信息 ===');
+                       console.log('當前視頻URL:', currentVideo.video.url);
+                       console.log('用戶互動狀態:', userInteracted);
+                       console.log('播放狀態:', isPlaying);
+                       console.log('視頻ID:', currentVideo.id);
+                       console.log('完整視頻對象:', currentVideo);
+                       
+                       setUserInteracted(true);
+                       setIsPlaying(true);
+                       
+                       // 延遲檢查狀態
+                       setTimeout(() => {
+                         console.log('=== 1秒後狀態檢查 ===');
+                         console.log('用戶互動狀態:', true);
+                         console.log('播放狀態:', true);
+                       }, 1000);
+                     }}
+                     className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg font-semibold"
+                   >
+                     🎬 開始播放視頻
+                   </button>
+                  <p className="text-sm text-gray-600 mt-2">點擊按鈕開始播放課程視頻</p>
+                </div>
+              )}
+              
+              {/* ReactPlayer 播放器 */}
               <div className="relative" style={{ paddingBottom: '56.25%', height: 0 }}>
-                {currentVideo.youtubeId ? (
-                  <iframe
-                    className="absolute top-0 left-0 w-full h-full"
-                    src={`https://www.youtube.com/embed/${currentVideo.youtubeId}?autoplay=1&rel=0&enablejsapi=1`}
-                    title={currentVideo.title}
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    onLoad={() => {
-                      // 監聽 YouTube 播放器事件
-                      window.addEventListener('message', (event) => {
-                        if (event.origin !== 'https://www.youtube.com') return;
-                        if (event.data && typeof event.data === 'string') {
-                          try {
-                            const data = JSON.parse(event.data);
-                            if (data.event === 'video-progress' && data.info && data.info.currentTime) {
-                              // 檢查是否接近影片結束（最後 3 秒）
-                              const duration = data.info.duration;
-                              const currentTime = data.info.currentTime;
-                              if (duration && currentTime && (duration - currentTime) <= 3) {
-                                handleVideoEnd();
-                              }
-                            }
-                          } catch (e) {
-                            // 忽略解析錯誤
-                          }
+                {currentVideo.video?.url ? (
+                  <ReactPlayer
+                    className="absolute top-0 left-0"
+                    url={currentVideo.video.url}
+                    width="100%"
+                    height="100%"
+                    playing={isPlaying && userInteracted}
+                    controls={true}
+                    onEnded={handleVideoEnd}
+                    onError={(error) => {
+                        console.error('=== ReactPlayer 錯誤詳情 ===');
+                        console.error('錯誤對象:', error);
+                        console.error('當前URL:', currentVideo.video.url);
+                        console.error('用戶互動狀態:', userInteracted);
+                        console.error('播放狀態:', isPlaying);
+                        
+                        // 嘗試不同的URL格式
+                        const videoId = currentVideo.video.url.split('v=')[1]?.split('&')[0];
+                        if (videoId) {
+                          console.log('提取的視頻ID:', videoId);
+                          console.log('建議的替代URL格式:');
+                          console.log('- 標準格式:', `https://www.youtube.com/watch?v=${videoId}`);
+                          console.log('- 嵌入格式:', `https://www.youtube.com/embed/${videoId}`);
+                          console.log('- 短鏈格式:', `https://youtu.be/${videoId}`);
                         }
-                      });
+                      }}
+                    onPlay={() => {
+                        console.log('=== ReactPlayer 開始播放 ===');
+                        console.log('播放URL:', currentVideo.video.url);
+                        console.log('用戶互動狀態:', userInteracted);
+                        console.log('播放狀態:', isPlaying);
+                        setUserInteracted(true);
+                        setIsPlaying(true);
+                      }}
+
+
+                    key={currentVideo.id} // 強制重新載入播放器
+                    config={{
+                      youtube: {
+                        playerVars: {
+                          autoplay: userInteracted ? 1 : 0,
+                          rel: 0
+                        }
+                      }
                     }}
-                  ></iframe>
+                  />
                 ) : (
                   <div className="absolute top-0 left-0 w-full h-full bg-gray-200 flex items-center justify-center">
                     <div className="text-center">
@@ -286,7 +470,11 @@ export default function CoursePlayer() {
               <div className="p-4 bg-gray-50">
                 <div className="flex justify-between items-center">
                   <button
-                    onClick={playPrevious}
+                    onClick={() => {
+                      setUserInteracted(true);
+                      setIsPlaying(true);
+                      playPrevious();
+                    }}
                     disabled={currentVideoIndex === 0}
                     className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -298,7 +486,11 @@ export default function CoursePlayer() {
                   </span>
                   
                   <button
-                    onClick={playNext}
+                    onClick={() => {
+                      setUserInteracted(true);
+                      setIsPlaying(true);
+                      playNext();
+                    }}
                     disabled={currentVideoIndex === playlist.length - 1}
                     className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -326,7 +518,11 @@ export default function CoursePlayer() {
                     className={`p-3 border-b cursor-pointer hover:bg-gray-50 transition ${
                       index === currentVideoIndex ? 'bg-yellow-50 border-l-4 border-l-yellow-500' : ''
                     }`}
-                    onClick={() => jumpToVideo(index)}
+                    onClick={() => {
+                      setUserInteracted(true);
+                      setIsPlaying(true);
+                      jumpToVideo(index);
+                    }}
                   >
                     <div className="flex items-start gap-3">
                       <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${

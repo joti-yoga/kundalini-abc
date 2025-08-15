@@ -47,19 +47,8 @@
     }
   }
 
-  /* CSS 變數用於動態間距控制 */
-  :root {
-    --title-margin-bottom: 0.5rem;
-    --description-margin-bottom: 0.75rem;
-  }
-
-  .video-title {
-    margin-bottom: var(--title-margin-bottom) !important;
-  }
-
-  .video-description {
-    margin-bottom: var(--description-margin-bottom) !important;
-  }
+  /* CSS 變數和 .video-title/.video-description 規則已移除 */
+  /* styled-components 現在完全控制標題和描述的間距 */
 
   /* 影片縮圖響應式尺寸 */
   .video-thumbnail {

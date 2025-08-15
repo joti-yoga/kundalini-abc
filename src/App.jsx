@@ -13,6 +13,9 @@ import CourseList from './pages/CourseList';
 import PracticeCalendar from './pages/PracticeCalendar';  // 引入 PracticeCalendar
 import Community from './pages/Community';  // 引入 Community
 import DesignSystemDemo from './pages/DesignSystemDemo';  // 引入設計系統示例
+import RouteTest from './pages/RouteTest';  // 引入路由測試頁面
+import SimplePlayerTest from './pages/SimplePlayerTest';  // 引入簡化播放器測試頁面
+
 
 function App() {
   return (
@@ -27,6 +30,7 @@ function App() {
         <Route path="/register-success" element={<RegisterSuccess />} />
         <Route path="/home" element={<Home />} />
         <Route path="/course/:id" element={<CoursePlayer />} />
+        <Route path="/course-player/:videoIds" element={<CoursePlayer />} />
         <Route path="/settings" element={<MemberSettings />} />
         <Route path="/upgrade" element={<Upgrade />} />
 
@@ -35,6 +39,8 @@ function App() {
         <Route path="/practice-calendar" element={<PracticeCalendar />} />  {/* 新增練習日曆頁面路由 */}
         <Route path="/community" element={<Community />} />  {/* 新增社群互動頁面路由 */}
         <Route path="/design-system" element={<DesignSystemDemo />} />  {/* 設計系統示例頁面 */}
+        <Route path="/route-test/:videoIds" element={<RouteTest />} />  {/* 路由測試頁面 */}
+        <Route path="/simple-player-test" element={<SimplePlayerTest />} />  {/* 簡化播放器測試頁面 */}
       </Routes>
     </Router>
   );
