@@ -306,7 +306,7 @@ export default function CourseList() {
               </span>
               
               <Link 
-                to="/member-home" 
+                to="/home" 
                 className="text-sm px-3 py-1 rounded transition" 
                 style={{ color: '#999700', backgroundColor: 'rgba(153, 151, 0, 0.1)' }}
               >
@@ -350,7 +350,7 @@ export default function CourseList() {
               </span>
               
               <Link 
-                to="/member-home" 
+                to="/home" 
                 className="text-xs px-2 py-1 rounded transition" 
                 style={{ color: '#999700', backgroundColor: 'rgba(153, 151, 0, 0.1)' }}
               >
@@ -383,7 +383,7 @@ export default function CourseList() {
       </div>
 
       {/* Main Content */}
-      <div className="p-6" style={{ paddingTop: '120px' }}>
+      <div className="p-6" style={{ paddingTop: isMobile ? '140px' : '120px' }}>
         {/* Guest notification */}
         {!user && (
           <div className="mb-6 bg-orange-100 border-l-4 border-orange-500 p-4 rounded-lg">
