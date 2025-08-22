@@ -4,6 +4,9 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth, db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
+import VimeoPlayer from '../components/VimeoPlayer';
+
+// 已移除 ReactPlayerWrapper，改用原生 Vimeo Player SDK
 
 // Hook for window size
 const useWindowSize = () => {
@@ -29,47 +32,47 @@ const useWindowSize = () => {
   return windowSize;
 };
 
-// Video data
+// Video data - 全部改為Vimeo嵌入
 const beginnerCoursesVideos = [
   {
     id: "beginner-1",
     title: "深長呼吸",
     description: "呼吸就是最好的藥—昆達里尼瑜伽「神經淨化呼吸法」：【深長呼吸】完整教學｜同步改善肺部功能＋憂鬱預防，科學驗證的冷靜耐心養成術",
-    duration: "5分鐘01秒",
-    youtubeId: "f07tEDlzB5c",
-    thumbnail: "https://img.youtube.com/vi/f07tEDlzB5c/maxresdefault.jpg"
+    duration: "5分01秒",
+    vimeoId: "1110248772",
+    thumbnail: "https://vumbnail.com/1110248772.jpg"
   },
   {
     id: "beginner-2",
     title: "屏息/懸息",
     description: "為什麼頂尖瑜伽士都在練「呼吸中止」？掌握懸息法，喚醒沉睡的昆達里尼能量！",
     duration: "3分54秒",
-    youtubeId: "TqdWpGvdCEs",
-    thumbnail: "https://img.youtube.com/vi/TqdWpGvdCEs/maxresdefault.jpg"
+    vimeoId: "1110249619",
+    thumbnail: "https://vumbnail.com/1110249619.jpg"
   },
   {
     id: "beginner-3",
     title: "火呼吸",
     description: "練習【火呼吸】可以變聰明？增加肺活量、清除毒素｜強健臍輪、抗壓能力、行動力、免疫力｜打破上癮｜這兩類人不能練習！",
     duration: "8分43秒",
-    youtubeId: "2L5wFRii8fw",
-    thumbnail: "https://img.youtube.com/vi/2L5wFRii8fw/maxresdefault.jpg"
+    vimeoId: "1110249646",
+    thumbnail: "https://vumbnail.com/1110249646.jpg"
   },
   {
     id: "beginner-4",
     title: "身體鎖：根鎖、頸鎖、大鎖",
     description: "啟動昆達里尼能量的關鍵竟是「憋尿動作」？解密身體鎖的奧秘",
     duration: "2分27秒",
-    youtubeId: "TCh-Qcz-DK8",
-    thumbnail: "https://img.youtube.com/vi/TCh-Qcz-DK8/maxresdefault.jpg"
+    vimeoId: "1110249732",
+    thumbnail: "https://vumbnail.com/1110249732.jpg"
   },
   {
     id: "beginner-5",
     title: "坐姿",
     description: "冥想時的坐姿解說大全：簡易坐姿、蓮花坐、至善式、岩石坐",
     duration: "3分31秒",
-    youtubeId: "rsOpfPySzR4",
-    thumbnail: "https://img.youtube.com/vi/rsOpfPySzR4/maxresdefault.jpg"
+    vimeoId: "1110249794",
+    thumbnail: "https://vumbnail.com/1110249794.jpg"
   }
 ];
 
@@ -78,36 +81,44 @@ const completeCoursesVideos = [
     id: "complete-1",
     title: "拜日式熱身+提升的奎亞+克爾坦奎亞SaTaNaMa唱誦冥想",
     description: "適合初學者的完整昆達里尼瑜伽課程，包含調頻、熱身、體式、放鬆、冥想和結束祈禱",
-    duration: "1.5小時",
-    youtubeId: "q19x_KVHico",
-    thumbnail: "https://img.youtube.com/vi/q19x_KVHico/maxresdefault.jpg"
+    duration: "1時30分0秒",
+    vimeoId: "1110248772",
+    thumbnail: "https://vumbnail.com/1110248772.jpg"
+  },
+  {
+    id: "complete-2",
+    title: "測試1",
+    description: "測試1",
+    duration: "18分47秒",
+    vimeoId: "1110249794",
+    thumbnail: "https://vumbnail.com/1110249794.jpg"
   }
 ];
 
 // 自選課程數據
 const mockCourses = [
   { id: "1", title: "1. 調頻", options: [
-      { id: "1-1", title: "調頻影片 1", duration: 10, description: "10 分鐘調頻練習", youtubeId: "tvkcOmfXQuE", thumbnail: "https://img.youtube.com/vi/tvkcOmfXQuE/maxresdefault.jpg" }
+      { id: "1-1", title: "調頻影片 1", duration: "3分15秒", description: "啟動脈輪：直達昆達里尼瑜伽中【黃金鏈接與保護咒】的力量 | 調頻與宇宙的無限連結秘笈", video: { url: "https://vimeo.com/1110248772", platform: "vimeo" }, vimeoId: "1110248772", thumbnail: "https://vumbnail.com/1110248772.jpg" }
   ] },
   { id: "2", title: "2. 熱身（呼吸/動作）", options: [
-      { id: "2-1", title: "熱身影片 1", duration: 15, description: "15 分鐘熱身", youtubeId: "e_esmWeX2Oc", thumbnail: "https://img.youtube.com/vi/e_esmWeX2Oc/maxresdefault.jpg" },
-      { id: "2-2", title: "熱身影片 2", duration: 20, description: "20 分鐘熱身", youtubeId: "HTV4E4ornUA", thumbnail: "https://img.youtube.com/vi/HTV4E4ornUA/maxresdefault.jpg" }
+      { id: "2-1", title: "拜日式熱身3遍", duration: "4分28秒", description: "拜日式口令12式能增強心肺功能、促進血液循環、伸展脊椎、按摩內臟、幫助消化", video: { url: "https://vimeo.com/1110249619", platform: "vimeo" }, vimeoId: "1110249619", thumbnail: "https://vumbnail.com/1110249619.jpg" },
+      { id: "2-2", title: "熱身影片 2", duration: "20分0秒", description: "20 分鐘熱身", video: { url: "https://vimeo.com/1110249891", platform: "vimeo" }, vimeoId: "1110249891", thumbnail: "https://vumbnail.com/1110249891.jpg" }
   ] },
   { id: "3", title: "3. 體式動作序列/身體奎亞", options: [
-      { id: "3-1", title: "體式動作影片 1", duration: 25, description: "25 分鐘體式動作", youtubeId: "BvcoNwATUW4", thumbnail: "https://img.youtube.com/vi/BvcoNwATUW4/maxresdefault.jpg" },
-      { id: "3-2", title: "體式動作影片 2", duration: 30, description: "30 分鐘體式動作", youtubeId: "ASHd6cEdKRs", thumbnail: "https://img.youtube.com/vi/ASHd6cEdKRs/maxresdefault.jpg" }
+      { id: "3-1", title: "太陽奎亞", duration: "38分0秒", description: "7個超簡單動作啟動「太陽能量」！呼吸冥想聲音全包含｜凍齡體態+超強行動力", video: { url: "https://vimeo.com/1110249646", platform: "vimeo" }, vimeoId: "1110249646", thumbnail: "https://vumbnail.com/1110249646.jpg" },
+      { id: "3-2", title: "體式動作影片 2", duration: "30分0秒", description: "30 分鐘體式動作", video: { url: "https://vimeo.com/1110248772", platform: "vimeo" }, vimeoId: "1110248772", thumbnail: "https://vumbnail.com/1110248772.jpg" }
   ] },
   { id: "4", title: "4. 放鬆休息", options: [
-      { id: "4-1", title: "放鬆影片 1", duration: 15, description: "15 分鐘放鬆練習", youtubeId: "Gg5F3Py8un4", thumbnail: "https://img.youtube.com/vi/Gg5F3Py8un4/maxresdefault.jpg" },
-      { id: "4-2", title: "放鬆影片 2", duration: 20, description: "20 分鐘放鬆練習", youtubeId: "JwIwBnYsVNk", thumbnail: "https://img.youtube.com/vi/JwIwBnYsVNk/maxresdefault.jpg" }
+      { id: "4-1", title: "放鬆影片 1", duration: "10分56秒", description: "全身放鬆引導", video: { url: "https://vimeo.com/1110249732", platform: "vimeo" }, vimeoId: "1110249732", thumbnail: "https://vumbnail.com/1110249732.jpg" },
+      { id: "4-2", title: "放鬆影片 2", duration: "20分0秒", description: "20 分鐘放鬆練習", video: { url: "https://vimeo.com/1110249619", platform: "vimeo" }, vimeoId: "1110249619", thumbnail: "https://vumbnail.com/1110249619.jpg" }
   ] },
   { id: "5", title: "5. 冥想（呼吸/唱誦）", options: [
-      { id: "5-1", title: "冥想影片 1", duration: 20, description: "20 分鐘冥想", youtubeId: "VDdVzux-7HY", thumbnail: "https://img.youtube.com/vi/VDdVzux-7HY/maxresdefault.jpg" },
-      { id: "5-2", title: "冥想影片 2", duration: 25, description: "25 分鐘冥想", youtubeId: "HTV4E4ornUA", thumbnail: "https://img.youtube.com/vi/HTV4E4ornUA/maxresdefault.jpg" },
-      { id: "5-3", title: "冥想影片 3", duration: 30, description: "30 分鐘冥想", youtubeId: "KYwWSdNb3UA", thumbnail: "https://img.youtube.com/vi/KYwWSdNb3UA/maxresdefault.jpg" }
+      { id: "5-1", title: "克爾坦奎亞SaTaNaMa唱誦", duration: "18分48秒", description: "大師說即使其他都失傳了，就做這個冥想：能帶給心靈完全平衡、保持警覺，改善、塑造感官和洞察力，讓你知所未知、見所未見、聞所未聞｜【Kirtan Kriya】昆達里尼音樂", video: { url: "https://vimeo.com/1110249794", platform: "vimeo" }, vimeoId: "1110249794", thumbnail: "https://vumbnail.com/1110249794.jpg" },
+      { id: "5-2", title: "冥想影片 2", duration: "25分0秒", description: "25 分鐘冥想", video: { url: "https://vimeo.com/1110249646", platform: "vimeo" }, vimeoId: "1110249646", thumbnail: "https://vumbnail.com/1110249646.jpg" },
+      { id: "5-3", title: "冥想影片 3", duration: "30分0秒", description: "30 分鐘冥想", video: { url: "https://vimeo.com/1110249732", platform: "vimeo" }, vimeoId: "1110249732", thumbnail: "https://vumbnail.com/1110249732.jpg" }
   ] },
   { id: "6", title: "6. 結束祈禱", options: [
-      { id: "6-1", title: "結束祈禱影片 1", duration: 10, description: "10 分鐘結束祈禱", youtubeId: "sQ6KQU2wQ_k", thumbnail: "https://img.youtube.com/vi/sQ6KQU2wQ_k/maxresdefault.jpg" }
+      { id: "6-1", title: "結束唱誦Long Time Sun（英文版）", duration: "2分28秒", description: "結尾儀式透過唱誦《永恆的陽光》與Yogi Bhajan連結祈禱", video: { url: "https://vimeo.com/1110249891", platform: "vimeo" }, vimeoId: "1110249891", thumbnail: "https://vumbnail.com/1110249891.jpg" }
   ] }
 ];
 
@@ -126,6 +137,8 @@ export default function CourseList() {
   const [playlistName, setPlaylistName] = useState('');
   const [playlistDescription, setPlaylistDescription] = useState('');
   const [savedPlaylists, setSavedPlaylists] = useState([]);
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [showVideoModal, setShowVideoModal] = useState(false);
   const navigate = useNavigate();
   const windowSize = useWindowSize();
   const isMobile = windowSize.width < 768;
@@ -218,18 +231,96 @@ export default function CourseList() {
     }));
   };
 
+  // 處理單獨播放功能
+  const handleSingleVideoPlay = (optionId) => {
+    console.log('handleSingleVideoPlay called with optionId:', optionId);
+    
+    // 從 mockCourses 中找到對應的影片
+    let foundVideo = null;
+    for (const course of mockCourses) {
+      const option = course.options.find(opt => opt.id === optionId);
+      if (option) {
+        foundVideo = {
+          id: option.id,
+          title: option.title,
+          description: option.description,
+          duration: option.duration,
+          vimeoId: option.vimeoId,
+          thumbnail: option.thumbnail,
+          video: option.video // 添加 video 對象
+        };
+        console.log('Found video:', foundVideo);
+        break;
+      }
+    }
+    
+    if (foundVideo) {
+      console.log('Setting selectedVideo and showVideoModal to true');
+      setSelectedVideo(foundVideo);
+      setShowVideoModal(true);
+    } else {
+      console.log('No video found for optionId:', optionId);
+    }
+  };
+
+  // 解析時長字串為總秒數
+  const parseDurationToSeconds = (durationStr) => {
+    if (!durationStr) return 0;
+    
+    let totalSeconds = 0;
+    
+    // 匹配時、分、秒
+    const hourMatch = durationStr.match(/(\d+)時/);
+    const minuteMatch = durationStr.match(/(\d+)分/);
+    const secondMatch = durationStr.match(/(\d+)秒/);
+    
+    if (hourMatch) totalSeconds += parseInt(hourMatch[1]) * 3600;
+    if (minuteMatch) totalSeconds += parseInt(minuteMatch[1]) * 60;
+    if (secondMatch) totalSeconds += parseInt(secondMatch[1]);
+    
+    return totalSeconds;
+  };
+  
+  // 將總秒數格式化為「x時x分x秒」格式（若為0時則不顯示時單位）
+  const formatDuration = (totalSeconds) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}時${minutes}分${seconds}秒`;
+    } else {
+      return `${minutes}分${seconds}秒`;
+    }
+  };
+  
+  // 計算已儲存播放列表的總時長（重新計算以確保格式正確）
+  const calculatePlaylistDuration = (playlist) => {
+    let totalSeconds = 0;
+    Object.entries(playlist.courses).forEach(([courseId, optionId]) => {
+      const course = mockCourses.find(c => c.id === courseId);
+      if (course) {
+        const option = course.options.find(o => o.id === optionId);
+        if (option) {
+          totalSeconds += parseDurationToSeconds(option.duration);
+        }
+      }
+    });
+    return formatDuration(totalSeconds);
+  };
+
   const getSelectedCoursesDuration = () => {
-    let totalDuration = 0;
+    let totalSeconds = 0;
     Object.entries(selectedCourses).forEach(([courseId, optionId]) => {
       const course = mockCourses.find(c => c.id === courseId);
       if (course) {
         const option = course.options.find(o => o.id === optionId);
         if (option) {
-          totalDuration += option.duration;
+          totalSeconds += parseDurationToSeconds(option.duration);
         }
       }
     });
-    return totalDuration;
+    return formatDuration(totalSeconds);
   };
 
   const isPlaylistComplete = () => {
@@ -458,7 +549,15 @@ export default function CourseList() {
                       <button 
                         key={video.id} 
                         className="bg-green-50 rounded-lg p-4 shadow hover:shadow-lg transition-all duration-200 text-left w-full hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
-                        onClick={() => window.open(`https://www.youtube.com/watch?v=${video.youtubeId}`, '_blank')}
+                        onClick={() => {
+                          console.log('Beginner video clicked:', video);
+                          console.log('Video URL will be:', `https://vimeo.com/${video.vimeoId}`);
+                          // 創建嵌入式播放器模態框
+                          setSelectedVideo(video);
+                          setShowVideoModal(true);
+                          // 自動收起選單以顯示模態框
+                          setExpandedSections(prev => ({ ...prev, beginner: false }));
+                        }}
                         aria-label={`觀看影片：${video.title}`}
                       >
                         <div className="aspect-video mb-3 rounded-lg overflow-hidden" style={{ width: '400px', height: '224px' }}>
@@ -486,7 +585,15 @@ export default function CourseList() {
                       <button 
                         key={video.id} 
                         className="bg-yellow-50 rounded-lg p-4 shadow hover:shadow-lg transition-all duration-200 text-left w-full hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50"
-                        onClick={() => window.open(`https://www.youtube.com/watch?v=${video.youtubeId}`, '_blank')}
+                        onClick={() => {
+                          console.log('Complete video clicked:', video);
+                          console.log('Video URL will be:', `https://player.vimeo.com/video/${video.vimeoId}`);
+                          // 創建嵌入式播放器模態框
+                          setSelectedVideo(video);
+                          setShowVideoModal(true);
+                          // 自動收起選單以顯示模態框
+                          setExpandedSections(prev => ({ ...prev, complete: false }));
+                        }}
                         aria-label={`觀看影片：${video.title}`}
                       >
                         <div className="aspect-video mb-3 rounded-lg overflow-hidden" style={{ width: '400px', height: '224px' }}>
@@ -526,7 +633,7 @@ export default function CourseList() {
                                   <p className="text-sm text-gray-600 mb-2 line-clamp-2">{playlist.description}</p>
                                 )}
                                 <p className="text-sm text-gray-600">
-                                  {Object.keys(playlist.courses).length} 個影片 • 總時長: {playlist.duration} 分鐘
+                                  {Object.keys(playlist.courses).length} 個影片 • 總時長: {calculatePlaylistDuration(playlist)}
                                 </p>
                                 <p className="text-xs text-gray-500 mt-1">
                                   建立於: {new Date(playlist.createdAt).toLocaleDateString('zh-TW')}
@@ -550,7 +657,7 @@ export default function CourseList() {
                                   return option ? (
                                     <div key={courseId} className="flex justify-between">
                                       <span>{course.title}: {option.title}</span>
-                                      <span>{option.duration} 分鐘</span>
+                                      <span>{option.duration}</span>
                                     </div>
                                   ) : null;
                                 })}
@@ -607,7 +714,7 @@ export default function CourseList() {
                                    <div className="text-center">
                                      <p className="font-medium text-gray-800 text-sm">{course.title.replace(/^\d+\.\s*/, '')}</p>
                                      <p className="text-xs text-gray-600 mt-1">{option.title}</p>
-                                     <span className="text-purple-600 font-medium text-xs mt-1 block">{option.duration} 分鐘</span>
+                                     <span className="text-purple-600 font-medium text-xs mt-1 block">{option.duration}</span>
                                    </div>
                                  </div>
                                </div>
@@ -616,7 +723,7 @@ export default function CourseList() {
                         </div>
                         <div className="mt-4 pt-4 border-t border-gray-200">
                           <div className="flex justify-between items-center mb-4">
-                            <span className="text-lg font-bold text-gray-800">總時長: {getSelectedCoursesDuration()} 分鐘</span>
+                            <span className="text-lg font-bold text-gray-800">總時長: {getSelectedCoursesDuration()}</span>
                           </div>
                           
                           {/* 儲存對話框區域內顯示 - 桌面版 */}
@@ -657,7 +764,7 @@ export default function CourseList() {
                                   <span>已選擇 {Object.keys(selectedCourses).length} 個影片</span>
                                 </div>
                                 <div className="text-base font-medium">
-                                  <span>總時長：{getSelectedCoursesDuration()} 分鐘</span>
+                                  <span>總時長：{getSelectedCoursesDuration()}</span>
                                 </div>
                               </div>
                               
@@ -745,14 +852,13 @@ export default function CourseList() {
                           <h3 className="text-xl font-bold text-gray-800 mb-4">{course.title}</h3>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {course.options.map(option => (
-                              <button
+                              <div
                                 key={option.id}
-                                className={`p-4 rounded-lg border-2 transition-all duration-200 text-left w-full focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 ${
+                                className={`p-4 rounded-lg border-2 transition-all duration-200 w-full ${
                                   selectedCourses[course.id] === option.id
                                     ? 'border-purple-500 bg-purple-100 shadow-md'
                                     : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50 hover:shadow-md'
                                 }`}
-                                onClick={() => handleCourseSelection(course.id, option.id)}
                               >
                                 <div className="flex items-start gap-3">
                                   {option.thumbnail ? (
@@ -770,10 +876,30 @@ export default function CourseList() {
                                   <div className="flex-1 min-w-0">
                                     <h4 className="font-medium text-gray-800 text-sm">{option.title}</h4>
                                     <p className="text-xs text-gray-600 mt-1">{option.description}</p>
-                                    <p className="text-xs text-purple-600 mt-1">{option.duration} 分鐘</p>
+                                    <p className="text-xs text-purple-600 mt-1">{option.duration}</p>
+                                    
+                                    {/* 按鈕區域 */}
+                                    <div className="flex gap-2 mt-3">
+                                      <button
+                                        className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+                                        onClick={() => handleSingleVideoPlay(option.id)}
+                                      >
+                                        單獨播放
+                                      </button>
+                                      <button
+                                        className={`px-3 py-1 text-xs rounded transition-colors ${
+                                          selectedCourses[course.id] === option.id
+                                            ? 'bg-purple-500 text-white'
+                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                        }`}
+                                        onClick={() => handleCourseSelection(course.id, option.id)}
+                                      >
+                                        {selectedCourses[course.id] === option.id ? '已選擇' : '加入播放列表'}
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
-                              </button>
+                              </div>
                             ))}
                           </div>
                         </div>
@@ -807,7 +933,15 @@ export default function CourseList() {
                       <button 
                         key={video.id} 
                         className="bg-green-200 p-4 rounded-lg w-full text-left hover:bg-green-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 hover:shadow-lg"
-                        onClick={() => window.open(`https://www.youtube.com/watch?v=${video.youtubeId}`, '_blank')}
+                        onClick={() => {
+                          console.log('Mobile beginner video clicked:', video);
+                          console.log('Video URL will be:', `https://player.vimeo.com/video/${video.vimeoId}`);
+                          // 創建嵌入式播放器模態框
+                          setSelectedVideo(video);
+                          setShowVideoModal(true);
+                          // 自動收起選單以顯示模態框
+                          setExpandedSections(prev => ({ ...prev, beginner: false }));
+                        }}
                       >
                         <div className="flex flex-col gap-4">
                           <div className="flex-shrink-0">
@@ -850,7 +984,15 @@ export default function CourseList() {
                       <button 
                         key={video.id} 
                         className="bg-yellow-200 p-4 rounded-lg w-full text-left hover:bg-yellow-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50 hover:shadow-lg"
-                        onClick={() => window.open(`https://www.youtube.com/watch?v=${video.youtubeId}`, '_blank')}
+                        onClick={() => {
+                          console.log('Mobile complete video clicked:', video);
+                          console.log('Video URL will be:', `https://player.vimeo.com/video/${video.vimeoId}`);
+                          // 創建嵌入式播放器模態框
+                          setSelectedVideo(video);
+                          setShowVideoModal(true);
+                          // 自動收起選單以顯示模態框
+                          setExpandedSections(prev => ({ ...prev, complete: false }));
+                        }}
                       >
                         <div className="flex flex-col gap-4">
                           <div className="flex-shrink-0">
@@ -905,7 +1047,7 @@ export default function CourseList() {
                                   <p className="text-xs text-gray-600 mt-1 line-clamp-2">{playlist.description}</p>
                                 )}
                                 <p className="text-xs text-gray-600 mt-1">
-                                  {Object.keys(playlist.courses).length} 個影片 • {playlist.duration} 分鐘
+                                  {Object.keys(playlist.courses).length} 個影片 • {calculatePlaylistDuration(playlist)}
                                 </p>
                                 <p className="text-xs text-gray-500">
                                   {new Date(playlist.createdAt).toLocaleDateString('zh-TW')}
@@ -998,8 +1140,10 @@ export default function CourseList() {
                                       : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50'
                                   }`}
                                   onClick={() => {
-                                    if (option.youtubeId) {
-                                      window.open(`https://www.youtube.com/watch?v=${option.youtubeId}`, '_blank');
+                                    if (option.vimeoId) {
+                                      // 創建嵌入式播放器模態框
+                                      setSelectedVideo(option);
+                                      setShowVideoModal(true);
                                     }
                                     handleCourseSelection(course.id, option.id);
                                   }}
@@ -1020,7 +1164,7 @@ export default function CourseList() {
                                       <div className="flex-1 min-w-0">
                                         <h4 className="font-medium text-gray-800 text-sm">{option.title}</h4>
                                         <p className="text-xs text-gray-600 mt-1">{option.description}</p>
-                                        <p className="text-xs text-purple-600 mt-1">{option.duration} 分鐘</p>
+                                        <p className="text-xs text-purple-600 mt-1">{option.duration}</p>
                                       </div>
                                     </div>
                                    </button>
@@ -1043,14 +1187,14 @@ export default function CourseList() {
                             return option ? (
                               <div key={courseId} className="flex justify-between items-center text-xs">
                                 <span className="text-gray-700">{course.title}: {option.title}</span>
-                                <span className="text-purple-600">{option.duration} 分鐘</span>
+                                <span className="text-purple-600">{option.duration}</span>
                               </div>
                             ) : null;
                           })}
                         </div>
                         <div className="mt-2 pt-2 border-t border-gray-200">
                           <div className="flex justify-between items-center mb-2">
-                            <span className="font-semibold text-gray-800 text-sm">總時長: {getSelectedCoursesDuration()} 分鐘</span>
+                            <span className="font-semibold text-gray-800 text-sm">總時長: {getSelectedCoursesDuration()}</span>
                           </div>
                           
                           {/* 儲存對話框區域內顯示 */}
@@ -1091,7 +1235,7 @@ export default function CourseList() {
                                   <span>已選擇 {Object.keys(selectedCourses).length} 個影片</span>
                                 </div>
                                 <div className="font-medium">
-                                  <span>總時長：{getSelectedCoursesDuration()} 分鐘</span>
+                                  <span>總時長：{getSelectedCoursesDuration()}</span>
                                 </div>
                               </div>
                               
@@ -1153,6 +1297,57 @@ export default function CourseList() {
       </div>
       
       {/* 保存播放列表對話框已移至「自選課」區域內顯示 */}
+      
+      {/* VimeoPlayer 影片模態框 */}
+      {showVideoModal && selectedVideo && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999] p-2 md:p-4">
+          <div className="bg-white rounded-lg w-full max-w-6xl max-h-[98vh] md:max-h-[95vh] flex flex-col">
+            <div className="flex justify-between items-center p-3 md:p-4 border-b flex-shrink-0">
+              <h3 className="text-base md:text-lg font-semibold text-gray-900 truncate pr-4">
+                {selectedVideo.title}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowVideoModal(false);
+                  setSelectedVideo(null);
+                }}
+                className="text-gray-500 hover:text-gray-700 text-2xl font-bold flex-shrink-0"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex-1 p-3 md:p-4 overflow-y-auto">
+              <div className="w-full aspect-video mb-4">
+                <VimeoPlayer
+                  videoId={selectedVideo.vimeoId}
+                  width="100%"
+                  height="100%"
+                  controls={true}
+                  autoplay={false}
+                  responsive={true}
+                  onReady={(player) => {
+                    console.log('VimeoPlayer ready for:', selectedVideo.vimeoId);
+                    console.log('Player instance:', player);
+                  }}
+                  onError={(error) => {
+                    console.error('VimeoPlayer error:', error);
+                    console.error('Error details:', {
+                      message: error.message,
+                      vimeoId: selectedVideo.vimeoId
+                    });
+                  }}
+                />
+              </div>
+              {selectedVideo.description && (
+                <div className="bg-gray-50 p-3 md:p-4 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-2">{selectedVideo.description}</p>
+                  <p className="text-xs text-gray-500">時長：{selectedVideo.duration}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

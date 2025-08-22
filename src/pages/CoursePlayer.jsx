@@ -1,40 +1,50 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import ReactPlayer from 'react-player';
+import VimeoPlayer from '../components/VimeoPlayer';
+
+// 輔助函數：從 Vimeo URL 中提取影片 ID
+const extractVimeoId = (url) => {
+  if (!url) return null;
+  const match = url.match(/vimeo\.com\/(\d+)/);
+  return match ? match[1] : null;
+};
 
 // 課程數據（重構為平台無關格式）
+// 所有影片已轉換為Vimeo嵌入格式
 const mockCourses = [
   { id: "1", title: "1. 調頻", options: [
-      { id: "1-1", title: "調頻影片 1", duration: 10, description: "10 分鐘調頻練習", video: { url: "https://www.youtube.com/watch?v=tvkcOmfXQuE", platform: "youtube" } }
+      { id: "1-1", title: "調頻影片 1", duration: "3分15秒", description: "啟動脈輪：直達昆達里尼瑜伽中【黃金鏈接與保護咒】的力量 | 調頻與宇宙的無限連結秘笈", video: { url: "https://vimeo.com/1110248772", platform: "vimeo" } }
   ] },
   { id: "2", title: "2. 熱身（呼吸/動作）", options: [
-      { id: "2-1", title: "熱身影片 1", duration: 15, description: "15 分鐘熱身", video: { url: "https://www.youtube.com/watch?v=e_esmWeX2Oc", platform: "youtube" } },
-      { id: "2-2", title: "熱身影片 2", duration: 20, description: "20 分鐘熱身", video: { url: "https://www.youtube.com/watch?v=HTV4E4ornUA", platform: "youtube" } }
+      { id: "2-1", title: "拜日式熱身3遍", duration: "4分28秒", description: "拜日式口令12式能增強心肺功能、促進血液循環、伸展脊椎、按摩內臟、幫助消化", video: { url: "https://vimeo.com/1110249619", platform: "vimeo" } },
+      { id: "2-2", title: "熱身影片 2", duration: "20分0秒", description: "20 分鐘熱身", video: { url: "https://vimeo.com/1110249891", platform: "vimeo" } }
   ] },
   { id: "3", title: "3. 體式動作序列/身體奎亞", options: [
-      { id: "3-1", title: "體式動作影片 1", duration: 25, description: "25 分鐘體式動作", video: { url: "https://www.youtube.com/watch?v=BvcoNwATUW4", platform: "youtube" } },
-      { id: "3-2", title: "體式動作影片 2", duration: 30, description: "30 分鐘體式動作", video: { url: "https://www.youtube.com/watch?v=ASHd6cEdKRs", platform: "youtube" } }
+      { id: "3-1", title: "太陽奎亞", duration: "38分0秒", description: "7個超簡單動作啟動「太陽能量」！呼吸冥想聲音全包含｜凍齡體態+超強行動力", video: { url: "https://vimeo.com/1110249646", platform: "vimeo" } },
+      { id: "3-2", title: "體式動作影片 2", duration: "30分0秒", description: "30 分鐘體式動作", video: { url: "https://vimeo.com/1110249732", platform: "vimeo" } }
   ] },
   { id: "4", title: "4. 放鬆休息", options: [
-      { id: "4-1", title: "放鬆影片 1", duration: 15, description: "15 分鐘放鬆練習", video: { url: "https://www.youtube.com/watch?v=Gg5F3Py8un4", platform: "youtube" } },
-      { id: "4-2", title: "放鬆影片 2", duration: 20, description: "20 分鐘放鬆練習", video: { url: "https://www.youtube.com/watch?v=JwIwBnYsVNk", platform: "youtube" } }
+      { id: "4-1", title: "放鬆影片 1", duration: "10分56秒", description: "全身放鬆引導", video: { url: "https://vimeo.com/1110249732", platform: "vimeo" } },
+      { id: "4-2", title: "放鬆影片 2", duration: "20分0秒", description: "20 分鐘放鬆練習", video: { url: "https://vimeo.com/1110249794", platform: "vimeo" } }
   ] },
   { id: "5", title: "5. 冥想（呼吸/唱誦）", options: [
-      { id: "5-1", title: "冥想影片 1", duration: 20, description: "20 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=VDdVzux-7HY", platform: "youtube" } },
-      { id: "5-2", title: "冥想影片 2", duration: 25, description: "25 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=HTV4E4ornUA", platform: "youtube" } },
-      { id: "5-3", title: "冥想影片 3", duration: 30, description: "30 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=KYwWSdNb3UA", platform: "youtube" } },
-      { id: "5-4", title: "冥想影片 4", duration: 35, description: "35 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=yEYFwtmMVLg", platform: "youtube" } },
-      { id: "5-5", title: "冥想影片 5", duration: 40, description: "40 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=KsOP80J80T8", platform: "youtube" } },
-      { id: "5-6", title: "冥想影片 6", duration: 45, description: "45 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=1Z4VQv71l-I", platform: "youtube" } },
-      { id: "5-7", title: "冥想影片 7", duration: 50, description: "50 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=V3skjng5qP0", platform: "youtube" } },
-      { id: "5-8", title: "冥想影片 8", duration: 55, description: "55 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=QnwrIXNddqk", platform: "youtube" } },
-      { id: "5-9", title: "冥想影片 9", duration: 60, description: "60 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=aCyKYSj3aU0", platform: "youtube" } },
-      { id: "5-10", title: "冥想影片 10", duration: 65, description: "65 分鐘冥想", video: { url: "https://www.youtube.com/watch?v=sip_w8Oxr6o", platform: "youtube" } }
+      { id: "5-1", title: "克爾坦奎亞SaTaNaMa唱誦", duration: "18分48秒", description: "大師說即使其他都失傳了，就做這個冥想：能帶給心靈完全平衡、保持警覺，改善、塑造感官和洞察力，讓你知所未知、見所未見、聞未聞｜【Kirtan Kriya】昆達里尼音樂", video: { url: "https://vimeo.com/1110249794", platform: "vimeo" } },
+      { id: "5-2", title: "冥想影片 2", duration: "25分0秒", description: "25 分鐘冥想", video: { url: "https://vimeo.com/1110249891", platform: "vimeo" } },
+      { id: "5-3", title: "冥想影片 3", duration: "30分0秒", description: "30 分鐘冥想", video: { url: "https://vimeo.com/1110249732", platform: "vimeo" } },
+      { id: "5-4", title: "冥想影片 4", duration: "35分0秒", description: "35 分鐘冥想", video: { url: "https://vimeo.com/1110249646", platform: "vimeo" } },
+      { id: "5-5", title: "冥想影片 5", duration: "40分0秒", description: "40 分鐘冥想", video: { url: "https://vimeo.com/1110249619", platform: "vimeo" } },
+      { id: "5-6", title: "冥想影片 6", duration: "45分0秒", description: "45 分鐘冥想", video: { url: "https://vimeo.com/1110248772", platform: "vimeo" } },
+      { id: "5-7", title: "冥想影片 7", duration: "50分0秒", description: "50 分鐘冥想", video: { url: "https://vimeo.com/1110249794", platform: "vimeo" } },
+      { id: "5-8", title: "冥想影片 8", duration: "55分0秒", description: "55 分鐘冥想", video: { url: "https://vimeo.com/1110249891", platform: "vimeo" } },
+      { id: "5-9", title: "冥想影片 9", duration: "1時0分0秒", description: "60 分鐘冥想", video: { url: "https://vimeo.com/1110249732", platform: "vimeo" } },
+      { id: "5-10", title: "冥想影片 10", duration: "1時5分0秒", description: "65 分鐘冥想", video: { url: "https://vimeo.com/1110249646", platform: "vimeo" } }
   ] },
   { id: "6", title: "6. 結束祈禱", options: [
-      { id: "6-1", title: "結束祈禱影片 1", duration: 10, description: "10 分鐘結束祈禱", video: { url: "https://www.youtube.com/watch?v=sQ6KQU2wQ_k", platform: "youtube" } }
+      { id: "6-1", title: "結束唱誦Long Time Sun（英文版）", duration: "2分28秒", description: "結尾儀式透過唱誦《永恆的陽光》與Yogi Bhajan連結祈禱", video: { url: "https://vimeo.com/1110249891", platform: "vimeo" } }
   ] }
 ];
+
+
 
 export default function CoursePlayer() {
   console.log('CoursePlayer component is rendering...');
@@ -54,9 +64,7 @@ export default function CoursePlayer() {
   const [noteVisibility, setNoteVisibility] = useState('private');
   const [noteType, setNoteType] = useState('experience');
   const [completedVideos, setCompletedVideos] = useState([]);
-  const [videoEndedFlag, setVideoEndedFlag] = useState(false);
-  const [autoPlayTimer, setAutoPlayTimer] = useState(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+
   const [invalidVideos, setInvalidVideos] = useState([]);
   const [showInvalidWarning, setShowInvalidWarning] = useState(false);
 
@@ -80,12 +88,50 @@ export default function CoursePlayer() {
             
             // 檢查影片URL是否有效
             if (option.video?.url && option.video.url.trim() !== '') {
+              // 先清理 URL 中的多餘參數
+              const sanitizedUrl = sanitizeUrl(option.video.url);
+              
+              // 對 Vimeo 影片進行 URL 格式統一處理
+              let normalizedUrl = sanitizedUrl;
+              if (option.video.platform === 'vimeo') {
+                normalizedUrl = normalizeVimeoUrl(sanitizedUrl);
+                console.log('Vimeo URL 標準化:', option.video.url, '->', normalizedUrl);
+              }
+              
+              // 檢查是否為有效的 Vimeo URL
+              const canPlay = option.video.platform === 'vimeo' && extractVimeoId(normalizedUrl) !== null;
+              
               playlistData.push({
                 ...option,
-                categoryTitle: course.title
+                categoryTitle: course.title,
+                video: {
+                  ...option.video,
+                  url: normalizedUrl // 使用標準化後的 URL
+                },
+                isPlayable: canPlay // 添加可播放標記
               });
+              
+              if (!canPlay) {
+                console.warn('不支援的影片來源:', normalizedUrl);
+                invalidVideos.push({
+                  id: option.id,
+                  title: option.title,
+                  reason: 'Invalid Vimeo URL'
+                });
+              }
             } else {
-              console.warn('CoursePlayer - Invalid video URL for:', option.title);
+              console.warn('不支援的影片來源:', option.video?.url);
+              // 即使URL無效，也將影片加入播放列表但標記為不可播放
+              playlistData.push({
+                ...option,
+                categoryTitle: course.title,
+                video: {
+                  ...option.video,
+                  url: option.video?.url || '' // 保留原始URL
+                },
+                isPlayable: false // 標記為不可播放
+              });
+              
               invalidVideos.push({
                 id: option.id,
                 title: option.title,
@@ -112,73 +158,164 @@ export default function CoursePlayer() {
     }
   }, [id, videoIds]);
 
-  // 重置影片結束標記當切換影片時，並設置自動播放定時器
-  useEffect(() => {
-    setVideoEndedFlag(false);
-    
-    // 清除之前的定時器
-    if (autoPlayTimer) {
-      clearTimeout(autoPlayTimer);
-    }
-    
-    // 設置新的自動播放定時器（影片時長 + 5秒緩衝）
-    if (playlist[currentVideoIndex] && playlist[currentVideoIndex].video?.url) {
-      const videoDurationMs = playlist[currentVideoIndex].duration * 60 * 1000; // 轉換為毫秒
-      const timer = setTimeout(() => {
-        console.log('Auto-play timer triggered');
-        handleVideoEnd();
-      }, videoDurationMs + 5000); // 影片時長 + 5秒緩衝
-      
-      setAutoPlayTimer(timer);
-    }
-    
-    // 清理函數
-    return () => {
-      if (autoPlayTimer) {
-        clearTimeout(autoPlayTimer);
-      }
-    };
-  }, [currentVideoIndex, playlist]);
-  
-  // 組件卸載時清理定時器
-  useEffect(() => {
-    return () => {
-      if (autoPlayTimer) {
-        clearTimeout(autoPlayTimer);
-      }
-    };
-  }, []);
 
-  // 播放下一個影片
-  const playNext = () => {
-    if (currentVideoIndex < playlist.length - 1) {
-      setCurrentVideoIndex(currentVideoIndex + 1);
+
+  // 清理 URL 中的多餘參數
+  const sanitizeUrl = (url) => {
+    if (!url) return '';
+    // 對於 Vimeo URL，保持完整性，不要截斷
+    if (url.includes('vimeo.com')) {
+      return url.trim();
     }
+    // 對於其他 URL，可以清理參數
+    return url.split('&')[0].trim();
   };
 
-  // 播放上一個影片
-  const playPrevious = () => {
-    if (currentVideoIndex > 0) {
-      setCurrentVideoIndex(currentVideoIndex - 1);
+  // 統一處理 Vimeo URL 格式
+  const normalizeVimeoUrl = (url) => {
+    if (!url) return '';
+    
+    // 先清理多餘參數
+    const cleanUrl = sanitizeUrl(url);
+    
+    // 如果已經是完整的 Vimeo URL，直接返回
+    if (cleanUrl.includes('vimeo.com')) return cleanUrl;
+    
+    // 如果只是數字 ID，轉換為完整 URL
+    if (/^\d+$/.test(cleanUrl.trim())) {
+      return `https://vimeo.com/${cleanUrl.trim()}`;
     }
+    
+    // 其他情況直接返回清理後的 URL
+    return cleanUrl;
+  };
+
+  // 解析時長字串為總秒數
+  const parseDurationToSeconds = (durationStr) => {
+    if (!durationStr) return 0;
+    
+    let totalSeconds = 0;
+    
+    // 匹配時、分、秒
+    const hourMatch = durationStr.match(/(\d+)時/);
+    const minuteMatch = durationStr.match(/(\d+)分/);
+    const secondMatch = durationStr.match(/(\d+)秒/);
+    
+    if (hourMatch) totalSeconds += parseInt(hourMatch[1]) * 3600;
+    if (minuteMatch) totalSeconds += parseInt(minuteMatch[1]) * 60;
+    if (secondMatch) totalSeconds += parseInt(secondMatch[1]);
+    
+    return totalSeconds;
+  };
+
+  
+  // 統一的 URL 檢查和標準化函數
+  const checkAndNormalizeUrl = (video) => {
+    if (!video || !video.url || video.url.trim() === '') {
+      return { isValid: false, normalizedUrl: '', reason: 'Empty or missing video URL' };
+    }
+    
+    // 先清理 URL 中的多餘參數
+    const sanitizedUrl = sanitizeUrl(video.url);
+    let normalizedUrl = sanitizedUrl;
+    
+    // 對 Vimeo 影片進行 URL 格式統一處理
+    if (video.platform === 'vimeo') {
+      normalizedUrl = normalizeVimeoUrl(sanitizedUrl);
+      console.log('Vimeo URL 標準化:', video.url, '->', normalizedUrl);
+    }
+    
+    // 檢查是否為有效的 Vimeo URL
+    const isValid = video.platform === 'vimeo' && extractVimeoId(normalizedUrl) !== null;
+    console.log('=== 檢查播放器支持 ===');
+    console.log('原始 URL:', video.url);
+    console.log('清理後 URL:', sanitizedUrl);
+    console.log('標準化 URL:', normalizedUrl);
+    console.log('平台:', video.platform);
+    console.log('是否有效:', isValid);
+    
+    return {
+      isValid: isValid,
+      normalizedUrl: normalizedUrl,
+      reason: isValid ? '' : 'Invalid Vimeo URL'
+    };
+  };
+
+  // 檢查是否支持該URL（保留向後兼容）
+  const checkPlayerSupport = (url, platform) => {
+    const result = checkAndNormalizeUrl({ url, platform });
+    return result.isValid;
+  };
+
+  // 檢查當前影片URL支持情況
+  useEffect(() => {
+    if (playlist[currentVideoIndex] && playlist[currentVideoIndex].video?.url) {
+      const currentVideo = playlist[currentVideoIndex];
+      checkPlayerSupport(currentVideo.video.url, currentVideo.video.platform);
+    }
+  }, [currentVideoIndex, playlist]);
+
+  // 播放下一個影片（自動跳過無法播放的影片）
+  const playNext = () => {
+    let nextIndex = currentVideoIndex + 1;
+    
+    // 循環尋找下一個可播放的影片
+    while (nextIndex < playlist.length) {
+      const nextVideo = playlist[nextIndex];
+      const urlCheck = checkAndNormalizeUrl(nextVideo?.video);
+      
+      if (urlCheck.isValid) {
+        setCurrentVideoIndex(nextIndex);
+        setUserInteracted(true);
+        return; // 找到可播放影片，退出函數
+      }
+      
+      console.warn(`跳過無法播放的影片: ${nextVideo?.title} (${urlCheck.reason})`);
+      nextIndex++; // 繼續尋找下一個影片
+    }
+    
+    // 沒有找到可播放的影片
+    alert('播放列表已結束或無可播放影片');
+  };
+
+  // 播放上一個影片（自動跳過無法播放的影片）
+  const playPrevious = () => {
+    let prevIndex = currentVideoIndex - 1;
+    
+    // 循環尋找上一個可播放的影片
+    while (prevIndex >= 0) {
+      const prevVideo = playlist[prevIndex];
+      const urlCheck = checkAndNormalizeUrl(prevVideo?.video);
+      
+      if (urlCheck.isValid) {
+        setCurrentVideoIndex(prevIndex);
+        setUserInteracted(true);
+        return; // 找到可播放影片，退出函數
+      }
+      
+      console.warn(`跳過無法播放的影片: ${prevVideo?.title} (${urlCheck.reason})`);
+      prevIndex--; // 繼續尋找上一個影片
+    }
+    
+    // 沒有找到可播放的影片
+    alert('已到達播放列表開頭或無可播放影片');
   };
 
   // 跳轉到指定影片
   const jumpToVideo = (index) => {
-    setCurrentVideoIndex(index);
+    const video = playlist[index];
+    const urlCheck = checkAndNormalizeUrl(video?.video);
+    
+    if (urlCheck.isValid) {
+      setCurrentVideoIndex(index);
+      setUserInteracted(true);
+    } else {
+      alert('此影片目前無法播放');
+    }
   };
 
-  // 處理影片播放結束
-  const handleVideoEnd = () => {
-    if (videoEndedFlag) return; // 避免重複觸發
-    setVideoEndedFlag(true);
-    
-    // 清除自動播放定時器
-    if (autoPlayTimer) {
-      clearTimeout(autoPlayTimer);
-      setAutoPlayTimer(null);
-    }
-    
+  // 手動標記影片完成（由於 iframe 無法自動檢測播放結束）
+  const markVideoCompleted = () => {
     const currentVideo = playlist[currentVideoIndex];
     if (currentVideo && !completedVideos.includes(currentVideo.id)) {
       // 記錄影片完成
@@ -201,18 +338,8 @@ export default function CoursePlayer() {
       }
       existingRecords[today].courses.push(practiceRecord);
       localStorage.setItem('practiceRecords', JSON.stringify(existingRecords));
-    }
-    
-    // 如果還有下一個影片，自動播放
-    if (currentVideoIndex < playlist.length - 1) {
-      console.log('Auto-playing next video...');
-      setTimeout(() => {
-        setCurrentVideoIndex(currentVideoIndex + 1);
-      }, 2000); // 2秒後自動播放下一個影片
-    } else {
-      // 播放列表結束
-      console.log('Playlist completed!');
-      alert('恭喜！您已完成整個播放列表的練習。');
+      
+      alert('影片已標記為完成！');
     }
   };
 
@@ -282,7 +409,7 @@ export default function CoursePlayer() {
           <div className="bg-white p-6 rounded-lg shadow-lg mb-6">
             <p className="text-gray-600 mb-4">可能的原因：</p>
             <ul className="text-left text-gray-600 space-y-2 mb-4">
-              <li>• 選擇的影片沒有有效的YouTube連結</li>
+              <li>• 選擇的影片沒有有效的Vimeo連結</li>
               <li>• 影片ID格式不正確</li>
               <li>• 所有選擇的影片都暫時無法播放</li>
             </ul>
@@ -297,7 +424,27 @@ export default function CoursePlayer() {
   }
 
   const currentVideo = playlist[currentVideoIndex];
-  const totalDuration = playlist.reduce((sum, video) => sum + video.duration, 0);
+  
+  // 計算總時長（正確的加總邏輯）
+  const totalDurationSeconds = playlist.reduce((sum, video) => {
+    return sum + parseDurationToSeconds(video.duration);
+  }, 0);
+  
+  // 將總秒數轉換為時分秒格式
+  const formatDuration = (totalSeconds) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    let result = '';
+    if (hours > 0) result += `${hours}時`;
+    if (minutes > 0) result += `${minutes}分`;
+    if (seconds > 0) result += `${seconds}秒`;
+    
+    return result || '0秒';
+  };
+  
+  const totalDuration = formatDuration(totalDurationSeconds);
   
   // 調試信息
   console.log('=== CoursePlayer Debug Info ===');
@@ -333,7 +480,7 @@ export default function CoursePlayer() {
               <div className="ml-3">
                 <h3 className="text-sm font-medium text-yellow-800">注意：部分影片無法播放</h3>
                 <div className="mt-2 text-sm text-yellow-700">
-                  <p>以下影片因缺少有效的YouTube連結而被跳過：</p>
+                  <p>以下影片因不支援的來源或無效連結而被跳過：</p>
                   <ul className="list-disc pl-5 mt-1 space-y-1">
                     {invalidVideos.map((video) => (
                       <li key={video.id}>{video.title}</li>
@@ -377,86 +524,23 @@ export default function CoursePlayer() {
                 </div>
               </div>
               
-              {/* 播放按鈕 */}
-              {!userInteracted && (
-                <div className="p-4 text-center bg-gray-100">
-                  <button
-                     onClick={() => {
-                       console.log('=== 播放按鈕點擊調試信息 ===');
-                       console.log('當前視頻URL:', currentVideo.video.url);
-                       console.log('用戶互動狀態:', userInteracted);
-                       console.log('播放狀態:', isPlaying);
-                       console.log('視頻ID:', currentVideo.id);
-                       console.log('完整視頻對象:', currentVideo);
-                       
-                       setUserInteracted(true);
-                       setIsPlaying(true);
-                       
-                       // 延遲檢查狀態
-                       setTimeout(() => {
-                         console.log('=== 1秒後狀態檢查 ===');
-                         console.log('用戶互動狀態:', true);
-                         console.log('播放狀態:', true);
-                       }, 1000);
-                     }}
-                     className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg font-semibold"
-                   >
-                     🎬 開始播放視頻
-                   </button>
-                  <p className="text-sm text-gray-600 mt-2">點擊按鈕開始播放課程視頻</p>
-                </div>
-              )}
+
               
-              {/* ReactPlayer 播放器 */}
-              <div className="relative" style={{ paddingBottom: '56.25%', height: 0 }}>
+              {/* VimeoPlayer 播放器 */}
+              <div className="aspect-video bg-black rounded-lg overflow-hidden">
                 {currentVideo.video?.url ? (
-                  <ReactPlayer
-                    className="absolute top-0 left-0"
-                    url={currentVideo.video.url}
+                  <VimeoPlayer
+                    videoId={extractVimeoId(currentVideo.video.url)}
                     width="100%"
                     height="100%"
-                    playing={isPlaying && userInteracted}
                     controls={true}
-                    onEnded={handleVideoEnd}
-                    onError={(error) => {
-                        console.error('=== ReactPlayer 錯誤詳情 ===');
-                        console.error('錯誤對象:', error);
-                        console.error('當前URL:', currentVideo.video.url);
-                        console.error('用戶互動狀態:', userInteracted);
-                        console.error('播放狀態:', isPlaying);
-                        
-                        // 嘗試不同的URL格式
-                        const videoId = currentVideo.video.url.split('v=')[1]?.split('&')[0];
-                        if (videoId) {
-                          console.log('提取的視頻ID:', videoId);
-                          console.log('建議的替代URL格式:');
-                          console.log('- 標準格式:', `https://www.youtube.com/watch?v=${videoId}`);
-                          console.log('- 嵌入格式:', `https://www.youtube.com/embed/${videoId}`);
-                          console.log('- 短鏈格式:', `https://youtu.be/${videoId}`);
-                        }
-                      }}
-                    onPlay={() => {
-                        console.log('=== ReactPlayer 開始播放 ===');
-                        console.log('播放URL:', currentVideo.video.url);
-                        console.log('用戶互動狀態:', userInteracted);
-                        console.log('播放狀態:', isPlaying);
-                        setUserInteracted(true);
-                        setIsPlaying(true);
-                      }}
-
-
-                    key={currentVideo.id} // 強制重新載入播放器
-                    config={{
-                      youtube: {
-                        playerVars: {
-                          autoplay: userInteracted ? 1 : 0,
-                          rel: 0
-                        }
-                      }
-                    }}
+                    autoplay={userInteracted}
+                    responsive={true}
+                    onEnded={markVideoCompleted}
+                    key={`${currentVideo.id}-${currentVideo.video.platform}`}
                   />
                 ) : (
-                  <div className="absolute top-0 left-0 w-full h-full bg-gray-200 flex items-center justify-center">
+                  <div className="w-full h-full bg-gray-200 flex items-center justify-center">
                     <div className="text-center">
                       <div className="text-6xl text-gray-400 mb-4">🎥</div>
                       <h3 className="text-xl font-semibold text-gray-600 mb-2">影片即將上線</h3>
@@ -468,11 +552,10 @@ export default function CoursePlayer() {
               
               {/* 播放控制 */}
               <div className="p-4 bg-gray-50">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center mb-3">
                   <button
                     onClick={() => {
                       setUserInteracted(true);
-                      setIsPlaying(true);
                       playPrevious();
                     }}
                     disabled={currentVideoIndex === 0}
@@ -488,13 +571,27 @@ export default function CoursePlayer() {
                   <button
                     onClick={() => {
                       setUserInteracted(true);
-                      setIsPlaying(true);
                       playNext();
                     }}
                     disabled={currentVideoIndex === playlist.length - 1}
                     className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     下一個 →
+                  </button>
+                </div>
+                
+                {/* 標記完成按鈕 */}
+                <div className="flex justify-center">
+                  <button
+                    onClick={markVideoCompleted}
+                    disabled={completedVideos.includes(currentVideo.id)}
+                    className={`px-4 py-2 rounded transition ${
+                      completedVideos.includes(currentVideo.id)
+                        ? 'bg-green-500 text-white cursor-not-allowed'
+                        : 'bg-blue-500 text-white hover:bg-blue-600'
+                    }`}
+                  >
+                    {completedVideos.includes(currentVideo.id) ? '✓ 已完成' : '標記完成'}
                   </button>
                 </div>
               </div>
@@ -515,29 +612,34 @@ export default function CoursePlayer() {
                 {playlist.map((video, index) => (
                   <div
                     key={video.id}
-                    className={`p-3 border-b cursor-pointer hover:bg-gray-50 transition ${
-                      index === currentVideoIndex ? 'bg-yellow-50 border-l-4 border-l-yellow-500' : ''
+                    className={`p-3 border-b transition ${
+                      index === currentVideoIndex 
+                        ? 'bg-yellow-50 border-l-4 border-l-yellow-500' 
+                        : video.isPlayable 
+                          ? 'cursor-pointer hover:bg-gray-50' 
+                          : 'cursor-not-allowed bg-gray-50 opacity-60'
                     }`}
                     onClick={() => {
-                      setUserInteracted(true);
-                      setIsPlaying(true);
-                      jumpToVideo(index);
+                      if (video.isPlayable) {
+                        setUserInteracted(true);
+                        setIsPlaying(true);
+                        jumpToVideo(index);
+                      }
                     }}
                   >
                     <div className="flex items-start gap-3">
-                      <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
-                        index === currentVideoIndex ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-600'
-                      }`}>
+                      <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${index === currentVideoIndex ? 'bg-yellow-500 text-white' : 'bg-gray-200 text-gray-600'}`}>
                         {index + 1}
                       </span>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs text-gray-500 truncate">
                           {video.categoryTitle}
                         </p>
-                        <p className={`text-sm font-medium truncate ${
-                          index === currentVideoIndex ? 'text-yellow-700' : 'text-gray-800'
-                        }`}>
+                        <p className={`text-sm font-medium truncate ${index === currentVideoIndex ? 'text-yellow-700' : 'text-gray-800'}`}>
                           {video.title}
+                          <span className="text-red-500 text-xs ml-2">
+                            {invalidVideos.find(v => v.id === video.id) ? '⚠️不可播放' : ''}
+                          </span>
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
                           {video.duration} 分鐘
