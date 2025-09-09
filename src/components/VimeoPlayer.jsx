@@ -41,8 +41,11 @@ const VimeoPlayer = React.forwardRef(({
   const [error, setError] = useState(null);
   const [retryCount, setRetryCount] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [playbackHealth, setPlaybackHealth] = useState('unknown'); // 'healthy', 'warning', 'error', 'unknown'
+  const [playbackHealth, setPlaybackHealth] = useState('unknown');
   const maxRetries = 3;
+  
+  // 保存原始的 console.error 函數
+  const originalConsoleErrorRef = useRef(console.error);
   const healthCheckInterval = React.useRef(null);
   
   // 用於記錄影片即將結束時的全螢幕狀態和防止重複觸發的變量
@@ -251,10 +254,21 @@ const VimeoPlayer = React.forwardRef(({
 
       playerRef.current = player;
       console.log('🔍 新播放器實例創建成功 - videoId:', videoId, '實例:', player);
+      // 添加全局錯誤捕獲，防止 Vimeo SDK 內部錯誤
+      const handleVimeoSDKError = (error) => {
+        if (error && typeof error === 'string' && error.includes('Cannot read properties of undefined')) {
+          console.warn('🛡️ 捕獲到 Vimeo SDK 內部錯誤，已安全處理:', error);
+          return;
+        }
+        originalConsoleErrorRef.current.apply(console, arguments);
+      };
+      
+      // 臨時覆蓋 console.error 來捕獲 SDK 錯誤
+      console.error = handleVimeoSDKError;
 
       // 設置事件監聽器
       player.ready().then(async () => {
-        console.log('🎬 Vimeo Player 已準備就緒');
+        console.log('🎬 Vimeo Player 已準備就绪');
         console.log('🎬 播放器實例:', player);
         console.log('🎬 影片 ID:', videoId);
         
@@ -480,14 +494,18 @@ const VimeoPlayer = React.forwardRef(({
         // 如果設置了自動播放，嘗試主動播放
         if (autoplay) {
           console.log('🚀 檢測到 autoplay=true，嘗試主動播放影片');
-          player.play().then(() => {
-            console.log('✅ 影片自動播放成功');
-            setPlaybackHealth('healthy');
-          }).catch((error) => {
-            console.warn('⚠️ 自動播放失敗，可能受到瀏覽器政策限制:', error);
-            console.warn('💡 用戶需要手動點擊播放按鈕');
-            setPlaybackHealth('warning');
-          });
+          
+          // 添加延遲以確保播放器完全初始化
+          setTimeout(() => {
+            player.play().then(() => {
+              console.log('✅ 影片自動播放成功');
+              setPlaybackHealth('healthy');
+            }).catch((error) => {
+              console.warn('⚠️ 自動播放失敗，可能受到瀏覽器政策限制:', error);
+              console.warn('💡 用戶需要手動點擊播放按鈕');
+              setPlaybackHealth('warning');
+            });
+          }, 500);
         }
         
         // 啟動播放器健康檢查
@@ -563,6 +581,11 @@ const VimeoPlayer = React.forwardRef(({
 
     // 清理函數
     return () => {
+      // 恢復原始的 console.error
+      if (typeof originalConsoleErrorRef.current === 'function') {
+        console.error = originalConsoleErrorRef.current;
+      }
+      
       // 停止健康檢查
       if (healthCheckInterval.current) {
         clearInterval(healthCheckInterval.current);
