@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import VimeoPlayer from '../components/VimeoPlayer';
+import Player from '@vimeo/player';
 
 // 輔助函數：從 Vimeo URL 中提取影片 ID
 const extractVimeoId = (url) => {
@@ -58,12 +59,60 @@ export default function CoursePlayer() {
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [playlist, setPlaylist] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [userInteracted, setUserInteracted] = useState(false);
+  const [userInteracted, setUserInteracted] = useState(true); // 直接啟用自動播放
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteContent, setNoteContent] = useState('');
   const [noteVisibility, setNoteVisibility] = useState('private');
   const [noteType, setNoteType] = useState('experience');
   const [completedVideos, setCompletedVideos] = useState([]);
+  
+  // 音量狀態管理
+  const [currentVolume, setCurrentVolume] = useState(() => {
+    // 從localStorage恢復音量設置，默認70%
+    const savedVolume = localStorage.getItem('vimeo-player-volume');
+    return savedVolume ? parseFloat(savedVolume) : 0.7;
+  });
+  const [isMuted, setIsMuted] = useState(() => {
+    // 從localStorage恢復靜音設置，默認不靜音
+    const savedMuted = localStorage.getItem('vimeo-player-muted');
+    return savedMuted === 'true';
+  });
+  const vimeoPlayerRef = useRef(null); // VimeoPlayer的引用
+
+  // 全螢幕容器相關狀態
+  const [isContainerFullscreen, setIsContainerFullscreen] = useState(false);
+  const fullscreenContainerRef = useRef(null);
+  
+  // 拖拽按鈕相關狀態
+  const [buttonPosition, setButtonPosition] = useState({ x: 16, y: 16 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  
+  // 全局拖拽事件處理
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (isDragging) {
+        setButtonPosition({
+          x: Math.max(0, Math.min(window.innerWidth - 200, e.clientX - dragOffset.x)),
+          y: Math.max(0, Math.min(window.innerHeight - 60, e.clientY - dragOffset.y))
+        });
+      }
+    };
+    
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+    
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragOffset]);
 
   const [invalidVideos, setInvalidVideos] = useState([]);
   const [showInvalidWarning, setShowInvalidWarning] = useState(false);
@@ -171,6 +220,29 @@ export default function CoursePlayer() {
     return url.split('&')[0].trim();
   };
 
+  // 切換靜音狀態的函數
+  const toggleMute = async () => {
+    if (vimeoPlayerRef.current) {
+      try {
+        const newMutedState = !isMuted;
+        setIsMuted(newMutedState);
+        localStorage.setItem('vimeo-player-muted', newMutedState.toString());
+        
+        if (newMutedState) {
+          // 靜音：設置音量為0
+          await vimeoPlayerRef.current.setVolume(0);
+          console.log('🔇 已設置靜音');
+        } else {
+          // 取消靜音：恢復之前的音量
+          await vimeoPlayerRef.current.setVolume(currentVolume);
+          console.log('🔊 已取消靜音，恢復音量:', currentVolume);
+        }
+      } catch (error) {
+        console.error('❌ 切換靜音狀態失敗:', error);
+      }
+    }
+  };
+
   // 統一處理 Vimeo URL 格式
   const normalizeVimeoUrl = (url) => {
     if (!url) return '';
@@ -250,24 +322,130 @@ export default function CoursePlayer() {
   // 檢查當前影片URL支持情況
   useEffect(() => {
     if (playlist[currentVideoIndex] && playlist[currentVideoIndex].video?.url) {
-      const currentVideo = playlist[currentVideoIndex];
       checkPlayerSupport(currentVideo.video.url, currentVideo.video.platform);
     }
   }, [currentVideoIndex, playlist]);
 
+  // 保存當前播放器的音量設置
+  const saveCurrentVolume = useCallback(async () => {
+    if (vimeoPlayerRef.current && vimeoPlayerRef.current.getVolume) {
+      try {
+        const volume = await vimeoPlayerRef.current.getVolume();
+        console.log('🔊 保存當前音量:', volume);
+        setCurrentVolume(volume);
+        
+        // 持久化音量設置到localStorage
+        localStorage.setItem('vimeo-player-volume', volume.toString());
+        
+        // 只有當音量大於0時才更新靜音狀態為false
+        // 避免將Vimeo播放器的初始音量0誤判為用戶主動靜音
+        if (volume > 0) {
+          setIsMuted(false);
+          localStorage.setItem('vimeo-player-muted', 'false');
+          console.log('🔊 檢測到有聲音，設置為非靜音狀態並持久化');
+        }
+        console.log('🔇 當前靜音狀態保持為:', isMuted);
+      } catch (error) {
+        console.warn('⚠️ 獲取音量失敗:', error);
+      }
+    }
+  }, [vimeoPlayerRef, isMuted]);
+
+  // 使用 useMemo 優化當前影片的計算
+  const currentVideo = useMemo(() => {
+    return playlist[currentVideoIndex] || null;
+  }, [playlist, currentVideoIndex]);
+
+  // 恢復音量設置的輔助函數
+  const restoreVolume = useCallback(async (player) => {
+    console.log('🔊 當前音量狀態:', { currentVolume, isMuted });
+    try {
+      if (isMuted) {
+        await player.setVolume(0);
+        console.log('🔇 已設置為靜音模式');
+      } else if (currentVolume !== null) {
+        await player.setVolume(currentVolume);
+        console.log('🔊 已恢復音量:', currentVolume);
+      }
+      return true;
+    } catch (error) {
+      console.warn('⚠️ 音量設置失敗:', error);
+      return false;
+    }
+  }, [currentVolume, isMuted]);
+
+  // 處理播放器準備就緒事件
+  const handlePlayerReady = useCallback(async (player) => {
+    console.log('🎬 播放器準備就緒');
+    
+    try {
+      // 恢復音量設置
+      await restoreVolume(player);
+      
+      // 強制設置用戶互動狀態
+      setUserInteracted(true);
+      
+      // 添加延遲確保播放器完全準備好
+      setTimeout(async () => {
+        if (userInteracted) {
+          try {
+            console.log('🚀 主動觸發自動播放');
+            await player.play();
+            console.log('✅ 自動播放成功');
+          } catch (error) {
+            console.warn('⚠️ 自動播放失敗，需要用戶互動:', error);
+          }
+        }
+      }, 100);
+      
+    } catch (error) {
+      console.error('播放器準備就緒處理失敗:', error);
+    }
+  }, [restoreVolume, userInteracted]);
+
   // 播放下一個影片（自動跳過無法播放的影片）
-  const playNext = () => {
+  const playNext = useCallback(async (maintainFullscreen = false) => {
+    console.log('🎵 playNext 函數被調用');
+    console.log('🖥️ 是否需要維持全螢幕:', maintainFullscreen);
+    console.log('當前影片索引:', currentVideoIndex);
+    console.log('播放列表總長度:', playlist.length);
+    console.log('🔊 播放下一個影片前 - 當前音量狀態:', { currentVolume, isMuted });
+    
+    // 在切換影片前保存當前音量
+    await saveCurrentVolume();
+    console.log('🔊 保存音量後 - 音量狀態:', { currentVolume, isMuted });
+    
     let nextIndex = currentVideoIndex + 1;
+    console.log('嘗試播放索引:', nextIndex);
     
     // 循環尋找下一個可播放的影片
     while (nextIndex < playlist.length) {
       const nextVideo = playlist[nextIndex];
+      console.log('檢查影片:', nextVideo?.title, '索引:', nextIndex);
+      
       const urlCheck = checkAndNormalizeUrl(nextVideo?.video);
+      console.log('URL 檢查結果:', urlCheck);
       
       if (urlCheck.isValid) {
+        console.log('✅ 找到可播放影片，切換到索引:', nextIndex);
+        console.log('🔊 切換影片時的音量狀態:', { currentVolume, isMuted });
+        
+        // 🔧 統一使用容器級切換策略，確保自動播放功能正常
+        console.log('🎬 使用統一的容器級切換策略');
+        
+        // 如果需要維持全螢幕模式，設置恢復標記
+        if (maintainFullscreen && fullscreenContainerRef.current) {
+          fullscreenContainerRef.current.dataset.shouldRestoreFullscreen = 'true';
+          console.log('🖥️ 已設置全螢幕恢復標記');
+        }
+        
+        // 統一的容器級切換：直接更新索引，觸發 React 重新渲染
+        // 這確保了 VimeoPlayer 組件完全重新初始化，避免狀態殘留問題
         setCurrentVideoIndex(nextIndex);
-        setUserInteracted(true);
-        return; // 找到可播放影片，退出函數
+        setUserInteracted(true); // 確保自動播放權限
+        
+        console.log('✅ 容器級切換完成 - 新索引:', nextIndex);
+        return; // 成功切換，退出函數
       }
       
       console.warn(`跳過無法播放的影片: ${nextVideo?.title} (${urlCheck.reason})`);
@@ -275,8 +453,9 @@ export default function CoursePlayer() {
     }
     
     // 沒有找到可播放的影片
+    console.log('❌ 播放列表已結束或無可播放影片');
     alert('播放列表已結束或無可播放影片');
-  };
+  }, [currentVideoIndex, playlist, currentVolume, isMuted, isContainerFullscreen, fullscreenContainerRef, saveCurrentVolume, checkAndNormalizeUrl]);
 
   // 播放上一個影片（自動跳過無法播放的影片）
   const playPrevious = () => {
@@ -314,10 +493,79 @@ export default function CoursePlayer() {
     }
   };
 
-  // 手動標記影片完成（由於 iframe 無法自動檢測播放結束）
-  const markVideoCompleted = () => {
-    const currentVideo = playlist[currentVideoIndex];
-    if (currentVideo && !completedVideos.includes(currentVideo.id)) {
+  // 全螢幕容器控制函數
+  const enterContainerFullscreen = async () => {
+    if (fullscreenContainerRef.current && !isContainerFullscreen) {
+      try {
+        await fullscreenContainerRef.current.requestFullscreen();
+        console.log('🖥️ 進入容器全螢幕模式');
+      } catch (error) {
+        console.error('❌ 進入全螢幕失敗:', error);
+      }
+    }
+  };
+
+  const exitContainerFullscreen = async () => {
+    if (document.fullscreenElement && isContainerFullscreen) {
+      try {
+        await document.exitFullscreen();
+        console.log('🖥️ 退出容器全螢幕模式');
+      } catch (error) {
+        console.error('❌ 退出全螢幕失敗:', error);
+      }
+    }
+  };
+
+  // 監聽全螢幕狀態變化和鍵盤事件
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isFullscreen = document.fullscreenElement === fullscreenContainerRef.current;
+      setIsContainerFullscreen(isFullscreen);
+      console.log('🖥️ 全螢幕狀態變化:', isFullscreen);
+    };
+
+    const handleKeyDown = (event) => {
+      // ESC 鍵退出全螢幕
+      if (event.key === 'Escape' && isContainerFullscreen) {
+        exitContainerFullscreen();
+      }
+      // F 鍵切換全螢幕
+      if (event.key === 'f' || event.key === 'F') {
+        if (isContainerFullscreen) {
+          exitContainerFullscreen();
+        } else {
+          enterContainerFullscreen();
+        }
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('keydown', handleKeyDown);
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isContainerFullscreen]);
+
+  // 自動標記影片完成並播放下一個（當影片播放結束時觸發）
+  const markVideoCompleted = useCallback((eventData = {}) => {
+    console.log('🎬 markVideoCompleted 被調用');
+    console.log('🖥️ 事件數據:', eventData);
+    console.log('當前影片索引:', currentVideoIndex);
+    console.log('播放列表長度:', playlist.length);
+    console.log('播放列表:', playlist);
+    
+    console.log('當前影片:', currentVideo);
+    console.log('已完成影片列表:', completedVideos);
+    
+    // 檢查是否處於容器全螢幕模式
+    const wasContainerFullscreen = isContainerFullscreen;
+    console.log('🖥️ 影片結束時容器是否為全螢幕模式:', wasContainerFullscreen);
+    
+    if (currentVideo && currentVideo.id && !completedVideos.includes(currentVideo.id)) {
+      console.log('✅ 開始標記影片完成:', currentVideo.title);
+      
       // 記錄影片完成
       setCompletedVideos(prev => [...prev, currentVideo.id]);
       
@@ -339,9 +587,29 @@ export default function CoursePlayer() {
       existingRecords[today].courses.push(practiceRecord);
       localStorage.setItem('practiceRecords', JSON.stringify(existingRecords));
       
-      alert('影片已標記為完成！');
+      // 自動播放下一個影片（無需彈窗確認）
+      if (currentVideoIndex < playlist.length - 1) {
+        console.log('🚀 準備自動播放下一個影片，1秒後執行');
+        console.log('下一個影片索引將是:', currentVideoIndex + 1);
+        console.log('用戶互動狀態:', userInteracted);
+        console.log('瀏覽器自動播放政策檢查...');
+        
+        setTimeout(() => {
+          console.log('⏭️ 執行 playNext()');
+          console.log('setTimeout 執行時的當前索引:', currentVideoIndex);
+          console.log('setTimeout 執行時的播放列表長度:', playlist.length);
+          console.log('🖥️ 傳遞容器全螢幕狀態給 playNext:', wasContainerFullscreen);
+          playNext(wasContainerFullscreen);
+        }, 1000); // 1秒後自動播放下一個影片
+      } else {
+        console.log('📋 已到達播放列表末尾，不自動播放');
+      }
+    } else {
+      console.log('⚠️ 影片已完成或無效，跳過標記');
+      console.log('影片是否存在:', !!currentVideo);
+      console.log('影片是否已完成:', (currentVideo && currentVideo.id) ? completedVideos.includes(currentVideo.id) : 'N/A');
     }
-  };
+  }, [currentVideoIndex, playlist, completedVideos, isContainerFullscreen, userInteracted, playNext]);
 
   // 保存心得記錄
   const saveNote = () => {
@@ -372,7 +640,7 @@ export default function CoursePlayer() {
     // 自動播放下一個影片
     if (currentVideoIndex < playlist.length - 1) {
       setTimeout(() => {
-        playNext();
+        playNext(false); // 手動保存心得時不維持全螢幕
       }, 1000);
     }
   };
@@ -385,7 +653,7 @@ export default function CoursePlayer() {
     // 自動播放下一個影片
     if (currentVideoIndex < playlist.length - 1) {
       setTimeout(() => {
-        playNext();
+        playNext(false); // 手動跳過心得時不維持全螢幕
       }, 1000);
     }
   };
@@ -423,7 +691,29 @@ export default function CoursePlayer() {
     );
   }
 
-  const currentVideo = playlist[currentVideoIndex];
+  // 安全檢查：如果 currentVideo 不存在，顯示錯誤
+  if (!currentVideo) {
+    console.error('CoursePlayer - currentVideo is undefined:', {
+      currentVideoIndex,
+      playlistLength: playlist.length,
+      playlist
+    });
+    return (
+      <div className="min-h-screen bg-yellow-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">⚠️ 影片載入錯誤</h2>
+          <div className="bg-white p-6 rounded-lg shadow-lg mb-6">
+            <p className="text-gray-600 mb-4">當前影片索引: {currentVideoIndex}</p>
+            <p className="text-gray-600 mb-4">播放列表長度: {playlist.length}</p>
+            <p className="text-sm text-gray-500">請重新整理頁面或返回課程列表。</p>
+          </div>
+          <Link to="/course-list" className="bg-yellow-500 text-white px-6 py-3 rounded-lg hover:bg-yellow-600 transition">
+            返回課程列表
+          </Link>
+        </div>
+      </div>
+    );
+  }
   
   // 計算總時長（正確的加總邏輯）
   const totalDurationSeconds = playlist.reduce((sum, video) => {
@@ -456,6 +746,7 @@ export default function CoursePlayer() {
   console.log('================================');
 
   return (
+    <>
     <div className="min-h-screen bg-yellow-50">
       {/* 標題欄 */}
       <div className="w-full py-4 px-6 bg-yellow-600 text-white">
@@ -526,18 +817,49 @@ export default function CoursePlayer() {
               
 
               
-              {/* VimeoPlayer 播放器 */}
-              <div className="aspect-video bg-black rounded-lg overflow-hidden">
+              {/* VimeoPlayer 播放器 - 容器級全螢幕控制 */}
+              <div 
+                ref={fullscreenContainerRef}
+                className="unified-video-container relative bg-black"
+                style={{
+                  width: isContainerFullscreen ? '100vw' : 'auto',
+                  height: isContainerFullscreen ? '100vh' : 'auto',
+                  position: isContainerFullscreen ? 'fixed' : 'relative',
+                  top: isContainerFullscreen ? '0' : 'auto',
+                  left: isContainerFullscreen ? '0' : 'auto',
+                  zIndex: isContainerFullscreen ? '9999' : 'auto',
+                  display: 'flex',
+                  flexDirection: isContainerFullscreen ? 'column' : 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  // 確保全螢幕時影片完全置中，但不隱藏控制按鈕
+                  ...(isContainerFullscreen && {
+                    padding: '20px',
+                    margin: '0'
+                  })
+                }}
+              >
+
                 {currentVideo.video?.url ? (
                   <VimeoPlayer
+                    ref={vimeoPlayerRef}
                     videoId={extractVimeoId(currentVideo.video.url)}
-                    width="100%"
-                    height="100%"
+                    width={isContainerFullscreen ? '100%' : 400}
+                    height={isContainerFullscreen ? '100%' : 225}
                     controls={true}
                     autoplay={userInteracted}
-                    responsive={true}
+                    muted={isMuted}
+                    responsive={isContainerFullscreen}
                     onEnded={markVideoCompleted}
-                    key={`${currentVideo.id}-${currentVideo.video.platform}`}
+                    onReady={handlePlayerReady}
+                    key="vimeo-player-stable"
+                    style={isContainerFullscreen ? {
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '100%',
+                      height: '100%'
+                    } : {}}
                   />
                 ) : (
                   <div className="w-full h-full bg-gray-200 flex items-center justify-center">
@@ -548,7 +870,66 @@ export default function CoursePlayer() {
                     </div>
                   </div>
                 )}
+                
+                {/* 全屏模式下的控制按鈕 - 固定在螢幕右上角 */}
+                {isContainerFullscreen && (
+                  <div 
+                    className="fixed flex items-center gap-3 cursor-move" 
+                    style={{ 
+                      zIndex: 10000,
+                      left: `${buttonPosition.x}px`,
+                      top: `${buttonPosition.y}px`,
+                      userSelect: 'none'
+                    }}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                      setDragOffset({
+                        x: e.clientX - buttonPosition.x,
+                        y: e.clientY - buttonPosition.y
+                      });
+                    }}
+                  >
+                    <button
+                      onClick={exitContainerFullscreen}
+                      className="px-6 py-3 bg-yellow-200/90 text-gray-800 text-lg font-semibold rounded-xl hover:bg-yellow-300/90 transition-colors duration-200"
+                      style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
+                      title="退出全螢幕 (ESC) - 可拖拽移動"
+                    >
+                      退出全螢幕
+                    </button>
+                  </div>
+                )}
               </div>
+              
+              {/* 測試按鈕 - 手動觸發 markVideoCompleted - 移到容器外避免被 overflow:hidden 裁切 */}
+              {currentVideo.video?.url && (
+                <div>
+                  <button 
+                    onClick={markVideoCompleted}
+                    className="mt-4 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 mx-auto block"
+                  >
+                    🧪 測試自動播放功能
+                  </button>
+                  
+                  {/* 🔍 調試按鈕：測試容器全螢幕切換 */}
+                  <button 
+                    onClick={() => {
+                      console.log('🔍 手動觸發容器全螢幕切換測試');
+                      console.log('🔍 當前影片索引:', currentVideoIndex);
+                      console.log('🔍 播放列表長度:', playlist.length);
+                      console.log('🔍 容器全螢幕狀態:', isContainerFullscreen);
+                      if (currentVideoIndex < playlist.length - 1) {
+                        console.log('🔍 模擬容器全螢幕模式下的影片結束');
+                        markVideoCompleted();
+                      }
+                    }}
+                    className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mx-auto block"
+                  >
+                    🔍 測試容器全螢幕切換
+                  </button>
+                </div>
+              )}
               
               {/* 播放控制 */}
               <div className="p-4 bg-gray-50">
@@ -564,14 +945,35 @@ export default function CoursePlayer() {
                     ← 上一個
                   </button>
                   
-                  <span className="text-gray-600">
-                    {currentVideoIndex + 1} / {playlist.length}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-gray-600">
+                      {currentVideoIndex + 1} / {playlist.length}
+                    </span>
+                    
+                    {/* 全螢幕控制按鈕 */}
+                    {!isContainerFullscreen ? (
+                      <button
+                        onClick={enterContainerFullscreen}
+                        className="px-3 py-1.5 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition"
+                        title="進入全螢幕"
+                      >
+                        全螢幕
+                      </button>
+                    ) : (
+                      <button
+                        onClick={exitContainerFullscreen}
+                        className="px-3 py-1.5 bg-red-500 text-white text-sm rounded hover:bg-red-600 transition"
+                        title="退出全螢幕 (ESC)"
+                      >
+                        退出全螢幕
+                      </button>
+                    )}
+                  </div>
                   
                   <button
                     onClick={() => {
                       setUserInteracted(true);
-                      playNext();
+                      playNext(false); // 手動點擊時不維持全螢幕
                     }}
                     disabled={currentVideoIndex === playlist.length - 1}
                     className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
@@ -580,20 +982,14 @@ export default function CoursePlayer() {
                   </button>
                 </div>
                 
-                {/* 標記完成按鈕 */}
-                <div className="flex justify-center">
-                  <button
-                    onClick={markVideoCompleted}
-                    disabled={completedVideos.includes(currentVideo.id)}
-                    className={`px-4 py-2 rounded transition ${
-                      completedVideos.includes(currentVideo.id)
-                        ? 'bg-green-500 text-white cursor-not-allowed'
-                        : 'bg-blue-500 text-white hover:bg-blue-600'
-                    }`}
-                  >
-                    {completedVideos.includes(currentVideo.id) ? '✓ 已完成' : '標記完成'}
-                  </button>
-                </div>
+                {/* 顯示完成狀態 */}
+                {completedVideos.includes(currentVideo.id) && (
+                  <div className="flex justify-center">
+                    <div className="px-4 py-2 bg-green-500 text-white rounded">
+                      ✓ 已完成
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -653,6 +1049,70 @@ export default function CoursePlayer() {
           </div>
         </div>
       </div>
+
+      {/* 測試按鈕 - 極其明顯的樣式來確認渲染問題 */}
+        {(isContainerFullscreen || document.fullscreenElement) && (
+          <div
+            className="fixed inset-0 pointer-events-none"
+            style={{
+              zIndex: 99999,
+              background: 'rgba(255, 0, 255, 0.3)', // 紫色半透明覆蓋整個螢幕
+              border: '10px solid lime' // 綠色邊框
+            }}
+          >
+            <button
+              onClick={() => {
+                console.log('🔘 測試按鈕被點擊');
+                console.log('🔘 isContainerFullscreen:', isContainerFullscreen);
+                console.log('🔘 document.fullscreenElement:', document.fullscreenElement);
+                exitContainerFullscreen();
+              }}
+              className="fixed top-4 right-4 pointer-events-auto"
+              title="退出全螢幕 (ESC)"
+              style={{
+                zIndex: 100000,
+                background: 'yellow',
+                color: 'black',
+                padding: '20px',
+                fontSize: '24px',
+                fontWeight: 'bold',
+                border: '5px solid red',
+                borderRadius: '10px',
+                boxShadow: '0 0 50px rgba(255, 255, 0, 1)'
+              }}
+            >
+              ✕ 測試按鈕
+            </button>
+          </div>
+        )}
+
+        {/* 強制顯示測試 - 無條件渲染 */}
+        <div
+          className="fixed top-4 left-4"
+          style={{
+            zIndex: 100001,
+            background: 'orange',
+            color: 'white',
+            padding: '10px',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            border: '3px solid blue',
+            borderRadius: '5px'
+          }}
+        >
+          強制顯示測試
+        </div>
+      
+      {/* 調試資訊 - 僅在開發環境顯示 */}
+       {process.env.NODE_ENV === 'development' && (
+         <div 
+           className="fixed top-20 right-4 bg-yellow-500 text-black p-2 rounded text-xs"
+           style={{ zIndex: 10001 }} // 確保高於全螢幕容器
+         >
+           <div>isContainerFullscreen: {isContainerFullscreen.toString()}</div>
+           <div>fullscreenElement: {document.fullscreenElement ? 'true' : 'false'}</div>
+         </div>
+       )}
 
       {/* 心得記錄模態框 */}
       {showNoteModal && (
@@ -747,6 +1207,11 @@ export default function CoursePlayer() {
           </div>
         </div>
       )}
+
+
     </div>
+
+
+    </>
   );
 }

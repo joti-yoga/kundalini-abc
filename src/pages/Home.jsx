@@ -41,6 +41,10 @@ export default function Home() {
     navigate('/community');
   };
 
+  const goToVimeoTest = () => {
+    navigate('/vimeo-test');
+  };
+
   const goBack = () => {
     window.history.back();
   };
@@ -150,6 +154,18 @@ export default function Home() {
           社群互動
         </button>
       </div>
+
+      {/* 開發環境測試按鈕 */}
+      {import.meta.env.DEV && (
+        <div className="mt-8 text-center">
+          <button
+            onClick={goToVimeoTest}
+            className="bg-red-500 text-white px-6 py-3 rounded-lg shadow hover:bg-red-600 transition text-lg font-medium"
+          >
+            🔧 Vimeo 播放器測試 (開發模式)
+          </button>
+        </div>
+      )}
     </div>
   );
 }

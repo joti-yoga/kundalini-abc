@@ -14,6 +14,7 @@ import PracticeCalendar from './pages/PracticeCalendar';  // 引入 PracticeCale
 import Community from './pages/Community';  // 引入 Community
 import DesignSystemDemo from './pages/DesignSystemDemo';  // 引入設計系統示例
 import RouteTest from './pages/RouteTest';  // 引入路由測試頁面
+import VimeoTest from './pages/VimeoTest';  // 引入 Vimeo 測試頁面
 
 
 
@@ -41,6 +42,7 @@ function App() {
         <Route path="/community" element={<Community />} />  {/* 新增社群互動頁面路由 */}
         <Route path="/design-system" element={<DesignSystemDemo />} />  {/* 設計系統示例頁面 */}
         <Route path="/route-test/:videoIds" element={<RouteTest />} />  {/* 路由測試頁面 */}
+        <Route path="/vimeo-test" element={<VimeoTest />} />  {/* Vimeo 測試頁面 */}
 
 
       </Routes>

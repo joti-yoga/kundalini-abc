@@ -46,9 +46,9 @@ const beginnerCoursesVideos = [
     id: "beginner-2",
     title: "屏息/懸息",
     description: "為什麼頂尖瑜伽士都在練「呼吸中止」？掌握懸息法，喚醒沉睡的昆達里尼能量！",
-    duration: "3分54秒",
-    vimeoId: "1110249619",
-    thumbnail: "https://vumbnail.com/1110249619.jpg"
+    duration: "3分39秒",
+    vimeoId: "1113456682",
+    thumbnail: "https://vumbnail.com/1113456682.jpg"
   },
   {
     id: "beginner-3",
@@ -1317,14 +1317,14 @@ export default function CourseList() {
               </button>
             </div>
             <div className="flex-1 p-3 md:p-4 overflow-y-auto">
-              <div className="w-full aspect-video mb-4">
+              <div className="modal-video-container mb-4">
                 <VimeoPlayer
                   videoId={selectedVideo.vimeoId}
-                  width="100%"
-                  height="100%"
+                  width={400}
+                  height={225}
                   controls={true}
                   autoplay={false}
-                  responsive={true}
+                  responsive={false}
                   onReady={(player) => {
                     console.log('VimeoPlayer ready for:', selectedVideo.vimeoId);
                     console.log('Player instance:', player);

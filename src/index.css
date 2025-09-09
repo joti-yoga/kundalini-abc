@@ -83,6 +83,91 @@
     }
     /* 移除了衝突的 margin-bottom 規則，讓 styled-components 控制間距 */
   }
+
+  /* 統一的響應式影片容器樣式 - 方案3：混合響應式策略 */
+  .unified-video-container {
+    width: 100%;
+    max-width: 400px;
+    aspect-ratio: 16/9;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  /* 響應式尺寸調整 */
+  @media (max-width: 1024px) {
+    .unified-video-container {
+      max-width: 90vw;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .unified-video-container {
+      max-width: 95vw;
+      border-radius: 4px;
+    }
+  }
+
+  /* 模態框中的影片容器 */
+  .modal-video-container {
+    width: 100%;
+    max-width: 400px;
+    aspect-ratio: 16/9;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  @media (max-width: 768px) {
+    .modal-video-container {
+      max-width: 95vw;
+      border-radius: 4px;
+    }
+  }
+
+  /* 移除 Vimeo Player iframe 的默認邊框和樣式，並強制統一顯示比例 */
+  .vimeo-player-container iframe,
+  .unified-video-container iframe,
+  .modal-video-container iframe,
+  iframe[src*="vimeo.com"],
+  iframe[src*="player.vimeo.com"] {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  /* 針對Vimeo Player可能的特殊類名 */
+  .vimeo-player-container [class*="vimeo"],
+  .unified-video-container [class*="vimeo"],
+  .modal-video-container [class*="vimeo"],
+  .vimeo-player-container [class*="player"],
+  .unified-video-container [class*="player"],
+  .modal-video-container [class*="player"] {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 確保 Vimeo Player 容器本身沒有邊框 */
+  .vimeo-player-container,
+  .unified-video-container,
+  .modal-video-container {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
 }
 
 /* postcss-disable-next-line */
