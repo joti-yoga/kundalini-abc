@@ -220,7 +220,8 @@ const VimeoPlayer = React.forwardRef(({
         portrait: false,
         pip: true, // 允許畫中畫模式
         keyboard: true, // 允許鍵盤控制
-        playsinline: false // 在 iOS 上允許全螢幕播放
+        // 修改 playsinline 設置
+        playsinline: true // 修復全螢幕播放問題
       };
       
       console.log('VimeoPlayer - 播放器配置:', playerOptions);
@@ -293,6 +294,21 @@ const VimeoPlayer = React.forwardRef(({
             console.log('🔇 靜音設置後驗證音量:', verifyVolume);
           } catch (e) {
             console.warn('⚠️ 設置靜音失敗:', e);
+          }
+        } else {
+          // 非靜音模式下，確保音量不為0
+          console.log('🔊 VimeoPlayer - 確保非靜音設置生效');
+          try {
+            const currentVolume = await player.getVolume();
+            console.log('🔊 當前音量:', currentVolume);
+            if (currentVolume === 0) {
+              console.log('🔊 檢測到音量為0，設置為正常音量');
+              await player.setVolume(1);
+              const verifyVolume = await player.getVolume();
+              console.log('🔊 音量設置後驗證:', verifyVolume);
+            }
+          } catch (e) {
+            console.warn('⚠️ 設置音量失敗:', e);
           }
         }
         
@@ -382,9 +398,37 @@ const VimeoPlayer = React.forwardRef(({
         
         // 在播放器準備就绪後註冊事件监听器
         // 全螢幕状态变化事件
-        player.on('fullscreenchange', (data) => {
+        // 全螢幕状态变化事件
+        player.on('fullscreenchange', async (data) => {
           console.log('🖥️ 全螢幕状态变化:', data.fullscreen);
           setIsFullscreen(data.fullscreen);
+          
+          // 進入全螢幕時確保播放狀態和音量正確
+          if (data.fullscreen) {
+            try {
+              // 检查当前播放状态
+              const paused = await player.getPaused();
+              console.log('🖥️ 全螢幕模式 - 当前播放状态:', paused ? '暂停' : '播放');
+              
+              // 如果影片被暂停，尝试恢复播放
+              if (paused) {
+                console.log('🖥️ 全螢幕模式 - 恢复播放');
+                await player.play();
+              }
+              
+              // 确保音量设置正确
+              if (!muted) {
+                const currentVolume = await player.getVolume();
+                console.log('🖥️ 全螢幕模式 - 当前音量:', currentVolume);
+                if (currentVolume === 0) {
+                  console.log('🖥️ 全螢幕模式 - 恢复音量');
+                  await player.setVolume(1);
+                }
+              }
+            } catch (error) {
+              console.warn('⚠️ 全螢幕状态恢复失败:', error);
+            }
+          }
         });
         
         // 结束事件
@@ -427,7 +471,7 @@ const VimeoPlayer = React.forwardRef(({
           
           // 監聽播放狀態變化
           player.on('play', () => {
-            console.log('▶️ Vimeo Player 開始播放');
+            console.log('▶️ Vimeo Player 开始播放');
           });
           
           player.on('pause', () => {
