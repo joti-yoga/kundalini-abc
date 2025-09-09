@@ -501,7 +501,7 @@ const VimeoPlayer = React.forwardRef(({
         const errorMessage = err.message || '影片載入失敗';
         
         // 如果是網路錯誤或權限錯誤，嘗試重試
-        if (retryCount < maxRetries && (
+        if (retryCount < maxRetries && errorMessage && typeof errorMessage === 'string' && (
           errorMessage.includes('network') ||
           errorMessage.includes('403') ||
           errorMessage.includes('401') ||
