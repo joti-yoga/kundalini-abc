@@ -42,6 +42,8 @@ const VimeoPlayer = React.forwardRef(({
   const [retryCount, setRetryCount] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [playbackHealth, setPlaybackHealth] = useState('unknown');
+  const [showPlayButton, setShowPlayButton] = useState(true);
+  const [userHasInteracted, setUserHasInteracted] = useState(false);
   const maxRetries = 3;
   
   // 保存原始的 console.error 函數
@@ -52,6 +54,55 @@ const VimeoPlayer = React.forwardRef(({
   // 將這些變量提升到組件級別，以便在 changeVideo 時能夠重置
   const wasFullscreenBeforeEndRef = React.useRef(false);
   const hasTriggeredEndRef = React.useRef(false);
+
+  // 處理用戶點擊開始播放按鈕
+  const handleStartPlay = React.useCallback(async () => {
+    if (!playerRef.current) return;
+    
+    try {
+      console.log('🎬 用戶點擊開始播放按鈕');
+      setUserHasInteracted(true);
+      setShowPlayButton(false);
+      
+      // 確保音量設置正確（非靜音）
+      if (!muted) {
+        await playerRef.current.setVolume(1);
+        console.log('🔊 設置音量為最大');
+      }
+      
+      // 開始播放
+      await playerRef.current.play();
+      console.log('▶️ 開始播放影片');
+      
+      // 延遲一下再進入全屏，確保播放已開始
+      setTimeout(async () => {
+        try {
+          // 檢查是否支持全屏
+          if (!document.fullscreenEnabled) {
+            console.warn('🖥️ 瀏覽器不支持全屏API');
+            return;
+          }
+          
+          // 嘗試進入全屏
+          const fullscreenTarget = containerRef.current?.closest('.unified-video-container') || containerRef.current;
+          if (fullscreenTarget && fullscreenTarget.requestFullscreen) {
+            await fullscreenTarget.requestFullscreen();
+            console.log('🖥️ 成功進入全屏模式');
+          } else {
+            // 如果容器全屏失敗，嘗試播放器全屏
+            await playerRef.current.requestFullscreen();
+            console.log('🖥️ 成功進入播放器全屏模式');
+          }
+        } catch (fullscreenError) {
+          console.warn('⚠️ 全屏失敗，但影片會繼續播放:', fullscreenError.message);
+        }
+      }, 500);
+      
+    } catch (error) {
+      console.error('❌ 開始播放失敗:', error);
+      setShowPlayButton(true); // 如果失敗，重新顯示按鈕
+    }
+  }, [muted]);
 
   // 暴露給父組件的方法 - 支持全螢幕狀態恢復
   const changeVideo = React.useCallback(async (newVideoId) => {
@@ -75,6 +126,8 @@ const VimeoPlayer = React.forwardRef(({
       // 重置結束事件相關的狀態變量
       wasFullscreenBeforeEndRef.current = false;
       hasTriggeredEndRef.current = false;
+      setShowPlayButton(true); // 重置播放按鈕狀態
+      setUserHasInteracted(false); // 重置用戶互動狀態
       console.log('🔄 重置結束事件狀態變量');
       
       // 使用 loadVideo 方法切換影片，保持播放器實例
@@ -820,6 +873,125 @@ const VimeoPlayer = React.forwardRef(({
             height: '100%'
           }}
         />
+        
+        {/* 優雅的開始播放按鈕覆蓋層 */}
+        {showPlayButton && !isLoading && !error && (
+          <div 
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: 'rgba(0, 0, 0, 0.7)',
+              zIndex: 20,
+              cursor: 'pointer',
+              transition: 'all 0.3s ease'
+            }}
+            onClick={handleStartPlay}
+          >
+            <div 
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '24px',
+                borderRadius: '16px',
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                transition: 'all 0.3s ease',
+                transform: 'scale(1)',
+                maxWidth: '280px',
+                textAlign: 'center'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05)';
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 1)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+              }}
+            >
+              {/* 播放圖標 */}
+              <div 
+                style={{
+                  width: '64px',
+                  height: '64px',
+                  borderRadius: '50%',
+                  backgroundColor: '#3b82f6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '16px',
+                  boxShadow: '0 4px 16px rgba(59, 130, 246, 0.4)',
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                <svg 
+                  width="28" 
+                  height="28" 
+                  viewBox="0 0 24 24" 
+                  fill="white"
+                  style={{ marginLeft: '2px' }}
+                >
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+              </div>
+              
+              {/* 標題文字 */}
+              <h3 
+                style={{
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  color: '#1f2937',
+                  marginBottom: '8px',
+                  margin: '0 0 8px 0'
+                }}
+              >
+                開始播放
+              </h3>
+              
+              {/* 描述文字 */}
+              <p 
+                style={{
+                  fontSize: '14px',
+                  color: '#6b7280',
+                  lineHeight: '1.4',
+                  margin: '0',
+                  marginBottom: '16px'
+                }}
+              >
+                點擊開始全屏播放體驗
+                <br />
+                <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+                  🔊 支援音頻播放
+                </span>
+              </p>
+              
+              {/* 提示文字 */}
+              <div 
+                style={{
+                  fontSize: '12px',
+                  color: '#9ca3af',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '4px'
+                }}
+              >
+                <span>🖥️</span>
+                <span>自動進入全屏模式</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
 });
