@@ -829,12 +829,12 @@ export default function CoursePlayer() {
                   left: isContainerFullscreen ? '0' : 'auto',
                   zIndex: isContainerFullscreen ? '9999' : 'auto',
                   display: 'flex',
-                  flexDirection: isContainerFullscreen ? 'column' : 'row',
+                  flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
                   // 確保全螢幕時影片完全置中，但不隱藏控制按鈕
                   ...(isContainerFullscreen && {
-                    padding: '20px',
+                    padding: 0,
                     margin: '0'
                   })
                 }}
@@ -848,17 +848,17 @@ export default function CoursePlayer() {
                     height={isContainerFullscreen ? '100%' : 225}
                     controls={true}
                     autoplay={userInteracted}
+                    userInteracted={userInteracted} // 新增：傳遞用戶互動狀態
                     muted={isMuted}
                     responsive={isContainerFullscreen}
                     onEnded={markVideoCompleted}
                     onReady={handlePlayerReady}
                     key="vimeo-player-stable"
                     style={isContainerFullscreen ? {
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
                       width: '100%',
-                      height: '100%'
+                      height: '100%',
+                      maxWidth: '100vw',
+                      maxHeight: '100vh'
                     } : {}}
                   />
                 ) : (
@@ -890,6 +890,16 @@ export default function CoursePlayer() {
                       });
                     }}
                   >
+                    {/* 音頻控制按鈕 */}
+                    <button
+                      onClick={toggleMute}
+                      className="px-4 py-3 bg-blue-200/90 text-gray-800 text-lg font-semibold rounded-xl hover:bg-blue-300/90 transition-colors duration-200"
+                      style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
+                      title={isMuted ? "取消靜音" : "靜音"}
+                    >
+                      {isMuted ? "🔊" : "🔇"}
+                    </button>
+                    
                     <button
                       onClick={exitContainerFullscreen}
                       className="px-6 py-3 bg-yellow-200/90 text-gray-800 text-lg font-semibold rounded-xl hover:bg-yellow-300/90 transition-colors duration-200"

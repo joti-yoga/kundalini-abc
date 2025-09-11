@@ -10,6 +10,7 @@ const VimeoPlayer = React.forwardRef(({
   loop = false,
   controls = true,
   responsive = false,
+  userInteracted = false, // 新增：接收父組件的用戶互動狀態
   onReady,
   onPlay,
   onPause,
@@ -43,7 +44,7 @@ const VimeoPlayer = React.forwardRef(({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [playbackHealth, setPlaybackHealth] = useState('unknown');
   const [showPlayButton, setShowPlayButton] = useState(true);
-  const [userHasInteracted, setUserHasInteracted] = useState(false);
+  const [userHasInteracted, setUserHasInteracted] = useState(userInteracted); // 使用父組件傳入的狀態
   const maxRetries = 3;
   
   // 保存原始的 console.error 函數
@@ -54,6 +55,12 @@ const VimeoPlayer = React.forwardRef(({
   // 將這些變量提升到組件級別，以便在 changeVideo 時能夠重置
   const wasFullscreenBeforeEndRef = React.useRef(false);
   const hasTriggeredEndRef = React.useRef(false);
+
+  // 監聽父組件傳入的 userInteracted 變化
+  useEffect(() => {
+    setUserHasInteracted(userInteracted);
+    console.log('👆 更新用戶互動狀態:', userInteracted);
+  }, [userInteracted]);
 
   // 移除「開始播放」按鈕處理函數
 
@@ -210,24 +217,30 @@ const VimeoPlayer = React.forwardRef(({
         id: numericVideoId,
         width: width,
         height: height,
-        autoplay: false, // 強制關閉自動播放，符合瀏覽器政策
-        muted: true, // 初始化時靜音，避免自動播放限制
+        autoplay: autoplay && userHasInteracted, // 只有在用戶交互後才允許自動播放
+        muted: muted, // 使用傳入的 muted 參數，而不是強制靜音
         loop: loop,
         controls: controls,
         responsive: responsive,
-        // 開發環境相關設定
-        dnt: false, // 允許追蹤以支持開發環境
+        // Vercel 生產環境優化配置
+        dnt: import.meta.env.PROD, // 生產環境啟用 Do Not Track
         transparent: false,
-        // 添加錯誤處理相關配置
+        // 網絡和性能優化
         quality: 'auto',
-        // HTTPS 兼容參數 - 解決 Vercel 部署環境全螢幕問題
+        speed: true, // 允許播放速度控制
+        // UI 優化 - 簡化界面提升性能
         title: false,
         byline: false,
         portrait: false,
+        // 功能配置
         pip: true, // 允許畫中畫模式
         keyboard: true, // 允許鍵盤控制
-        // 修改 playsinline 設置
-        playsinline: true // 修復全螢幕播放問題
+        playsinline: true, // 修復全螢幕播放問題
+        // Vercel 環境兼容性配置
+        autopause: false, // 防止在 Vercel 環境中自動暫停
+        background: false, // 確保正常播放模式
+        // 網絡優化
+        preload: 'metadata' // 只預載元數據，減少初始加載時間
       };
       
       console.log('VimeoPlayer - 播放器配置:', playerOptions);
@@ -307,9 +320,8 @@ const VimeoPlayer = React.forwardRef(({
           try {
             const currentVolume = await player.getVolume();
             console.log('🔊 當前音量:', currentVolume);
-            if (currentVolume === 0) {
-              console.log('🔊 檢測到音量為0，設置為正常音量');
-              await player.setVolume(1);
+            if (!muted && currentVolume === 0) {
+              await player.setVolume(0.7);
               const verifyVolume = await player.getVolume();
               console.log('🔊 音量設置後驗證:', verifyVolume);
             }
@@ -319,30 +331,38 @@ const VimeoPlayer = React.forwardRef(({
         }
         
         // 改進音頻處理邏輯，確保 Vercel 環境正常工作
-        // 在播放器準備就绪後，確保音頻設置正確
+        // 在播放器準備就绪後，根據傳入參數設置正確的音頻狀態
         try {
-          // 確保播放器處於正確的初始狀態
-          await player.setMuted(true); // 初始靜音
-          console.log('🔇 播放器初始化為靜音狀態');
+          console.log('🔊 設置播放器音頻狀態 - muted:', muted, 'userHasInteracted:', userHasInteracted);
           
-          // 如果用戶已經交互過，準備啟動播放
-          if (userHasInteracted) {
-            console.log('👆 檢測到用戶已交互，準備啟動播放');
+          // 根據傳入的 muted 參數設置音頻狀態
+          await player.setMuted(muted);
+          if (!muted) {
+            await player.setVolume(0.7);
+            console.log('🔊 播放器設置為非靜音狀態，音量: 0.7');
+          } else {
+            console.log('🔇 播放器設置為靜音狀態');
+          }
+          
+          // 如果允許自動播放且用戶已交互，嘗試開始播放
+          if (autoplay && userHasInteracted) {
+            console.log('👆 檢測到自動播放條件滿足，準備啟動播放');
             
-            // 取消靜音並設置音量
-            if (!muted) {
-              await player.setMuted(false);
-              await player.setVolume(1);
-              console.log('🔊 已取消靜音並設置最大音量');
-            }
-            
-            // 嘗試開始播放
             try {
               await player.play();
-              console.log('▶️ 播放成功啟動');
+              console.log('▶️ 自動播放成功啟動');
             } catch (playError) {
-              console.warn('⚠️ 自動播放失敗，需要用戶手動啟動:', playError.message);
+                const errorMessage = playError?.message || playError?.toString() || '未知錯誤';
+                console.warn('⚠️ 自動播放失敗，需要用戶手動啟動:', errorMessage);
+                if (errorMessage.includes('user activation')) {
+                    console.log('🔇 由於瀏覽器政策，需要用戶互動才能播放');
+                } else {
+                    console.log('🔇 自動播放失敗，暫停播放器');
+                    await player.pause();
+                }
             }
+          } else {
+            console.log('⏸️ 播放器初始化為暫停狀態');
           }
         } catch (audioError) {
           console.warn('⚠️ 音頻設置失敗:', audioError.message);
@@ -392,11 +412,11 @@ const VimeoPlayer = React.forwardRef(({
                 // 全螢幕後確保音頻和播放狀態正確
                 setTimeout(async () => {
                   try {
-                    if (!muted) {
-                      await player.setMuted(false);
-                      await player.setVolume(1);
-                      console.log('🔊 全螢幕模式下恢復音頻');
-                    }
+                    // 🔧 修復：無論 muted 參數如何，全螢幕時都強制取消靜音
+                    console.log('🔊 全螢幕模式下強制恢復音頻');
+                    await player.setMuted(false);
+                    await player.setVolume(1);
+                    
                     await player.play();
                     console.log('▶️ 全螢幕模式下開始播放 - 影片ID:', videoId);
                   } catch (playError) {
@@ -453,37 +473,52 @@ const VimeoPlayer = React.forwardRef(({
         }, 100);
         
         // 在播放器準備就绪後註冊事件监听器
-        // 全螢幕状态变化事件
-        // 全螢幕状态变化事件
+        // 全螢幕状态变化事件 - 改進狀態管理
         player.on('fullscreenchange', async (data) => {
           console.log('🖥️ 全螢幕状态变化:', data.fullscreen);
           setIsFullscreen(data.fullscreen);
           
           // 進入全螢幕時確保播放狀態和音量正確
           if (data.fullscreen) {
-            try {
-              // 检查当前播放状态
-              const paused = await player.getPaused();
-              console.log('🖥️ 全螢幕模式 - 当前播放状态:', paused ? '暂停' : '播放');
-              
-              // 如果影片被暂停，尝试恢复播放
-              if (paused) {
-                console.log('🖥️ 全螢幕模式 - 恢复播放');
-                await player.play();
-              }
-              
-              // 确保音量设置正确
-              if (!muted) {
+            // 添加延遲確保全屏轉換完成
+            setTimeout(async () => {
+              try {
+                // 檢查當前播放狀態
+                const paused = await player.getPaused();
+                const currentMuted = await player.getMuted();
                 const currentVolume = await player.getVolume();
-                console.log('🖥️ 全螢幕模式 - 当前音量:', currentVolume);
-                if (currentVolume === 0) {
-                  console.log('🖥️ 全螢幕模式 - 恢复音量');
-                  await player.setVolume(1);
+                
+                console.log('🖥️ 全螢幕模式狀態檢查:', {
+                  paused,
+                  muted: currentMuted,
+                  volume: currentVolume,
+                  shouldBeMuted: muted
+                });
+                
+                // 🔧 修復：強制同步音量狀態，忽略瀏覽器的自動靜音
+                if (!muted) {
+                  console.log('🖥️ 全螢幕模式 - 強制取消靜音並恢復音量');
+                  await player.setMuted(false);
+                  await player.setVolume(1); // 設置為最大音量
                 }
+                
+                // 然後處理播放狀態
+                if (paused && autoplay) {
+                  console.log('🖥️ 全螢幕模式 - 恢復播放');
+                  try {
+                    await player.play();
+                    console.log('✅ 全螢幕模式播放恢復成功');
+                    setUserHasInteracted(true);
+                  } catch (playError) {
+                    console.warn('⚠️ 全螢幕模式播放恢復失敗:', playError.message);
+                    setPlaybackHealth('warning');
+                  }
+                }
+                
+              } catch (error) {
+                console.warn('⚠️ 全螢幕狀態恢復失敗:', error);
               }
-            } catch (error) {
-              console.warn('⚠️ 全螢幕状态恢复失败:', error);
-            }
+            }, 300);
           }
         });
         
@@ -591,20 +626,35 @@ const VimeoPlayer = React.forwardRef(({
           }
         });
         
-        // 如果設置了自動播放，嘗試主動播放
+        // 改進自動播放邏輯，使用父組件傳入的 autoplay 狀態
         if (autoplay) {
-          console.log('🚀 檢測到 autoplay=true，嘗試主動播放影片');
+          console.log('🚀 檢測到 autoplay=true（來自父組件），嘗試主動播放影片');
           
           // 添加延遲以確保播放器完全初始化
-          setTimeout(() => {
-            player.play().then(() => {
+          setTimeout(async () => {
+            try {
+              // 父組件已經管理用戶交互狀態，直接嘗試播放
+              console.log('🚀 父組件已確認用戶交互，開始播放');
+              await player.play();
               console.log('✅ 影片自動播放成功');
               setPlaybackHealth('healthy');
-            }).catch((error) => {
+              setUserHasInteracted(true); // 同步內部狀態
+            } catch (error) {
               console.warn('⚠️ 自動播放失敗，可能受到瀏覽器政策限制:', error);
               console.warn('💡 用戶需要手動點擊播放按鈕');
               setPlaybackHealth('warning');
-            });
+              
+              // 如果自動播放失敗，確保播放器處於暫停狀態
+              try {
+                const paused = await player.getPaused();
+                if (!paused) {
+                  await player.pause();
+                  console.log('🔄 自動播放失敗後設置為暫停狀態');
+                }
+              } catch (pauseError) {
+                console.warn('⚠️ 設置暫停狀態失敗:', pauseError);
+              }
+            }
           }, 500);
         }
         
@@ -643,14 +693,40 @@ const VimeoPlayer = React.forwardRef(({
       console.error('創建 Vimeo Player 失敗:', err);
       const errorMessage = err.message || '無法創建播放器';
       
-      // 如果是網路錯誤，嘗試重試
+      // Vercel 環境特殊錯誤處理
+      const isNetworkError = err.message?.includes('network') || 
+                            err.message?.includes('fetch') ||
+                            err.message?.includes('CORS') ||
+                            err.name === 'NetworkError';
+      
+      const isPermissionError = err.message?.includes('permission') ||
+                               err.message?.includes('autoplay') ||
+                               err.message?.includes('policy');
+      
+      // 針對不同錯誤類型採用不同重試策略
       if (retryCount < maxRetries) {
-        console.log(`重試創建播放器 (${retryCount + 1}/${maxRetries})`);
-        setRetryCount(prev => prev + 1);
-        return;
+        if (isNetworkError) {
+          console.log(`🌐 網絡錯誤，延遲重試 (${retryCount + 1}/${maxRetries})`);
+          // 網絡錯誤使用指數退避重試
+          setTimeout(() => {
+            setRetryCount(prev => prev + 1);
+          }, Math.pow(2, retryCount) * 1000);
+          return;
+        } else if (isPermissionError) {
+          console.log(`🔒 權限錯誤，重置用戶交互狀態後重試 (${retryCount + 1}/${maxRetries})`);
+          setUserHasInteracted(false);
+          setRetryCount(prev => prev + 1);
+          return;
+        } else {
+          console.log(`🔄 一般錯誤重試 (${retryCount + 1}/${maxRetries})`);
+          setRetryCount(prev => prev + 1);
+          return;
+        }
       }
       
-      setError(errorMessage);
+      // 所有重試都失敗後的處理
+      console.error('🚨 播放器初始化最終失敗，已達最大重試次數');
+      setError(`播放器初始化失敗: ${errorMessage}`);
       setIsLoading(false);
       if (onError) {
         onError(err);
@@ -873,7 +949,9 @@ const VimeoPlayer = React.forwardRef(({
           ref={containerRef}
           style={{
             width: '100%',
-            height: '100%'
+            height: '100%',
+            minHeight: '200px',
+            backgroundColor: 'transparent',
           }}
         />
         
