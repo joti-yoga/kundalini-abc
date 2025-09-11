@@ -412,10 +412,13 @@ const VimeoPlayer = React.forwardRef(({
                 // 全螢幕後確保音頻和播放狀態正確
                 setTimeout(async () => {
                   try {
-                    // 🔧 修復：無論 muted 參數如何，全螢幕時都強制取消靜音
+                    // 🔧 修復：全螢幕時強制恢復音頻，無論初始狀態
                     console.log('🔊 全螢幕模式下強制恢復音頻');
                     await player.setMuted(false);
-                    await player.setVolume(1);
+                    const vol = await player.getVolume();
+                    if (vol === 0) {
+                      await player.setVolume(0.7); // 設置為70%音量
+                    }
                     
                     await player.play();
                     console.log('▶️ 全螢幕模式下開始播放 - 影片ID:', videoId);
@@ -495,11 +498,14 @@ const VimeoPlayer = React.forwardRef(({
                   shouldBeMuted: muted
                 });
                 
-                // 🔧 修復：強制同步音量狀態，忽略瀏覽器的自動靜音
-                if (!muted) {
-                  console.log('🖥️ 全螢幕模式 - 強制取消靜音並恢復音量');
-                  await player.setMuted(false);
-                  await player.setVolume(1); // 設置為最大音量
+                // 🔧 修復：全螢幕時強制恢復音量，無論muted參數如何
+                console.log('🖥️ 全螢幕模式 - 強制恢復音量和取消靜音');
+                await player.setMuted(false);
+                // 檢查當前音量，如果為0則設置為合理音量
+                if (currentVolume === 0) {
+                  await player.setVolume(0.7); // 設置為70%音量
+                } else {
+                  await player.setVolume(Math.max(currentVolume, 0.5)); // 至少50%音量
                 }
                 
                 // 然後處理播放狀態

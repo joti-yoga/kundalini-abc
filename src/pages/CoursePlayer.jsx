@@ -229,13 +229,18 @@ export default function CoursePlayer() {
         localStorage.setItem('vimeo-player-muted', newMutedState.toString());
         
         if (newMutedState) {
-          // 靜音：設置音量為0
-          await vimeoPlayerRef.current.setVolume(0);
+          // 靜音：使用Vimeo的setMuted方法
+          await vimeoPlayerRef.current.setMuted(true);
           console.log('🔇 已設置靜音');
         } else {
-          // 取消靜音：恢復之前的音量
-          await vimeoPlayerRef.current.setVolume(currentVolume);
-          console.log('🔊 已取消靜音，恢復音量:', currentVolume);
+          // 取消靜音：使用Vimeo的setMuted方法並恢復音量
+          await vimeoPlayerRef.current.setMuted(false);
+          // 確保音量不為0
+          const vol = await vimeoPlayerRef.current.getVolume();
+          if (vol === 0) {
+            await vimeoPlayerRef.current.setVolume(currentVolume > 0 ? currentVolume : 0.7);
+          }
+          console.log('🔊 已取消靜音，當前音量:', await vimeoPlayerRef.current.getVolume());
         }
       } catch (error) {
         console.error('❌ 切換靜音狀態失敗:', error);
