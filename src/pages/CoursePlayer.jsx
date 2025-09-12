@@ -374,8 +374,35 @@ export default function CoursePlayer() {
     console.log('🎬 播放器準備就緒');
     
     try {
-      // 恢復音量設置
-      await restoreVolume(player);
+      // HTTPS 環境音頻處理
+      const isHTTPS = window.location.protocol === 'https:';
+      console.log('🔊 CoursePlayer - 環境檢測:', isHTTPS ? 'HTTPS' : 'HTTP');
+      
+      if (isHTTPS && !isMuted) {
+        // HTTPS 環境：等待用戶交互後再啟用音頻
+        const handleFirstInteraction = async () => {
+          try {
+            await player.setMuted(false);
+            await player.setVolume(currentVolume || 0.7);
+            console.log('🔊 CoursePlayer - HTTPS 環境：用戶交互後成功啟用音頻');
+          } catch (error) {
+            console.warn('⚠️ CoursePlayer - HTTPS 音頻啟用失敗:', error);
+          }
+          
+          // 移除事件監聽器
+          document.removeEventListener('click', handleFirstInteraction);
+          document.removeEventListener('touchstart', handleFirstInteraction);
+          document.removeEventListener('keydown', handleFirstInteraction);
+        };
+        
+        // 添加多種交互事件監聽
+        document.addEventListener('click', handleFirstInteraction, { once: true });
+        document.addEventListener('touchstart', handleFirstInteraction, { once: true });
+        document.addEventListener('keydown', handleFirstInteraction, { once: true });
+      } else {
+        // HTTP 環境或已靜音：直接恢復音量設置
+        await restoreVolume(player);
+      }
       
       // 強制設置用戶互動狀態
       setUserInteracted(true);
@@ -513,10 +540,21 @@ export default function CoursePlayer() {
 
   // 監聽全螢幕狀態變化和鍵盤事件
   useEffect(() => {
-    const handleFullscreenChange = () => {
+    const handleFullscreenChange = async () => {
       const isFullscreen = document.fullscreenElement === fullscreenContainerRef.current;
       setIsContainerFullscreen(isFullscreen);
       console.log('🖥️ 全螢幕狀態變化:', isFullscreen);
+      
+      // 全屏模式音頻修復
+      if (isFullscreen && !isMuted && vimeoPlayerRef.current) {
+        try {
+          await vimeoPlayerRef.current.setMuted(false);
+          await vimeoPlayerRef.current.setVolume(currentVolume || 0.7);
+          console.log('🖥️ CoursePlayer - 全屏模式：音頻已啟用');
+        } catch (error) {
+          console.warn('⚠️ CoursePlayer - 全屏音頻設置失敗:', error);
+        }
+      }
     };
 
     const handleKeyDown = (event) => {
