@@ -788,6 +788,30 @@ const VimeoPlayer = React.forwardRef(({
       }
     }, [muted]);
 
+    // 全屏模式音頻修復
+    useEffect(() => {
+      const handleFullscreenChange = async () => {
+        if (!playerRef.current) return;
+        
+        const isFullscreen = !!document.fullscreenElement;
+        console.log('🖥️ VimeoPlayer - 全屏狀態變化:', isFullscreen);
+        
+        if (isFullscreen && !muted) {
+          // 進入全屏時確保音頻正常
+          try {
+            await playerRef.current.setMuted(false);
+            await playerRef.current.setVolume(0.7);
+            console.log('🖥️ VimeoPlayer - 全屏模式：音頻已啟用');
+          } catch (error) {
+            console.warn('⚠️ VimeoPlayer - 全屏音頻設置失敗:', error);
+          }
+        }
+      };
+      
+      document.addEventListener('fullscreenchange', handleFullscreenChange);
+      return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, [muted]);
+
     // 提供播放器控制方法
     const play = () => playerRef.current?.play();
     const pause = () => playerRef.current?.pause();
@@ -958,66 +982,3 @@ export default React.memo(VimeoPlayer, (prevProps, nextProps) => {
     prevProps.userInteracted === nextProps.userInteracted
   );
 });
-
-  // HTTPS 音頻處理 - 解決線上環境音頻問題
-  useEffect(() => {
-    if (!playerRef.current) return;
-    
-    const isHTTPS = window.location.protocol === 'https:';
-    console.log('🔊 HTTPS 音頻處理 - 環境:', isHTTPS ? 'HTTPS' : 'HTTP', '靜音狀態:', muted);
-    
-    if (isHTTPS) {
-      // HTTPS 環境：需要用戶交互後才能啟用音頻
-      const handleFirstInteraction = async () => {
-        try {
-          if (playerRef.current && !muted) {
-            await playerRef.current.setMuted(false);
-            await playerRef.current.setVolume(0.7);
-            console.log('🔊 HTTPS 環境：用戶交互後成功啟用音頻');
-          }
-        } catch (error) {
-          console.warn('⚠️ HTTPS 音頻啟用失敗:', error);
-        }
-        
-        // 移除事件監聽器
-        document.removeEventListener('click', handleFirstInteraction);
-        document.removeEventListener('touchstart', handleFirstInteraction);
-        document.removeEventListener('keydown', handleFirstInteraction);
-      };
-      
-      // 添加多種交互事件監聽
-      document.addEventListener('click', handleFirstInteraction, { once: true });
-      document.addEventListener('touchstart', handleFirstInteraction, { once: true });
-      document.addEventListener('keydown', handleFirstInteraction, { once: true });
-      
-      return () => {
-        document.removeEventListener('click', handleFirstInteraction);
-        document.removeEventListener('touchstart', handleFirstInteraction);
-        document.removeEventListener('keydown', handleFirstInteraction);
-      };
-    }
-  }, [playerRef.current, muted]);
-  
-  // 全屏模式音頻修復
-  useEffect(() => {
-    const handleFullscreenChange = async () => {
-      if (!playerRef.current) return;
-      
-      const isFullscreen = !!document.fullscreenElement;
-      console.log('🖥️ 全屏狀態變化:', isFullscreen);
-      
-      if (isFullscreen && !muted) {
-        // 進入全屏時確保音頻正常
-        try {
-          await playerRef.current.setMuted(false);
-          await playerRef.current.setVolume(0.7);
-          console.log('🖥️ 全屏模式：音頻已啟用');
-        } catch (error) {
-          console.warn('⚠️ 全屏音頻設置失敗:', error);
-        }
-      }
-    };
-    
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, [muted]);
