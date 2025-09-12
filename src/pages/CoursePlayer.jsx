@@ -75,6 +75,7 @@ export default function CoursePlayer() {
   const [isMuted, setIsMuted] = useState(() => {
     // 從localStorage恢復靜音設置，默認不靜音
     const savedMuted = localStorage.getItem('vimeo-player-muted');
+    // 更嚴格的類型轉換：只有明確是 'true' 才返回 true
     return savedMuted === 'true';
   });
   const vimeoPlayerRef = useRef(null); // VimeoPlayer的引用
@@ -222,29 +223,18 @@ export default function CoursePlayer() {
 
   // 切換靜音狀態的函數
   const toggleMute = async () => {
-    if (vimeoPlayerRef.current) {
-      try {
-        const newMutedState = !isMuted;
-        setIsMuted(newMutedState);
-        localStorage.setItem('vimeo-player-muted', newMutedState.toString());
-        
-        if (newMutedState) {
-          // 靜音：使用Vimeo的setMuted方法
-          await vimeoPlayerRef.current.setMuted(true);
-          console.log('🔇 已設置靜音');
-        } else {
-          // 取消靜音：使用Vimeo的setMuted方法並恢復音量
-          await vimeoPlayerRef.current.setMuted(false);
-          // 確保音量不為0
-          const vol = await vimeoPlayerRef.current.getVolume();
-          if (vol === 0) {
-            await vimeoPlayerRef.current.setVolume(currentVolume > 0 ? currentVolume : 0.7);
-          }
-          console.log('🔊 已取消靜音，當前音量:', await vimeoPlayerRef.current.getVolume());
-        }
-      } catch (error) {
-        console.error('❌ 切換靜音狀態失敗:', error);
-      }
+    try {
+      const newMutedState = !isMuted;
+      console.log('🔊 CoursePlayer - 切換靜音狀態:', isMuted, '->', newMutedState);
+      
+      // 更新狀態，這會觸發VimeoPlayer的muted屬性變化
+      setIsMuted(newMutedState);
+      localStorage.setItem('vimeo-player-muted', newMutedState.toString());
+      
+      // 不再直接操作播放器音量，讓VimeoPlayer的useEffect處理
+      console.log('🔊 CoursePlayer - 靜音狀態已更新，VimeoPlayer將自動處理音頻設置');
+    } catch (error) {
+      console.error('❌ 切換靜音狀態失敗:', error);
     }
   };
 

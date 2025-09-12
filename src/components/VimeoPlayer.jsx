@@ -276,7 +276,7 @@ const VimeoPlayer = React.forwardRef(({
       console.log('🔍 新播放器實例創建成功 - videoId:', videoId, '實例:', player);
       // 添加全局錯誤捕獲，防止 Vimeo SDK 內部錯誤
       const handleVimeoSDKError = (error) => {
-        if (error && typeof error === 'string' && error.includes('Cannot read properties of undefined')) {
+        if (error && typeof error === 'string' && error.includes && error.includes('Cannot read properties of undefined')) {
           console.warn('🛡️ 捕獲到 Vimeo SDK 內部錯誤，已安全處理:', error);
           return;
         }
@@ -304,45 +304,27 @@ const VimeoPlayer = React.forwardRef(({
         setIsLoading(false);
         setError(null);
         
-        // 先確保音量設置正確應用（Vimeo播放器有時會忽略初始化時的muted參數）
-        if (muted) {
-          console.log('🔇 VimeoPlayer - 確保靜音設置生效');
-          try {
-            await player.setVolume(0);
-            const verifyVolume = await player.getVolume();
-            console.log('🔇 靜音設置後驗證音量:', verifyVolume);
-          } catch (e) {
-            console.warn('⚠️ 設置靜音失敗:', e);
-          }
-        } else {
-          // 非靜音模式下，確保音量不為0
-          console.log('🔊 VimeoPlayer - 確保非靜音設置生效');
-          try {
-            const currentVolume = await player.getVolume();
-            console.log('🔊 當前音量:', currentVolume);
-            if (!muted && currentVolume === 0) {
-              await player.setVolume(0.7);
-              const verifyVolume = await player.getVolume();
-              console.log('🔊 音量設置後驗證:', verifyVolume);
-            }
-          } catch (e) {
-            console.warn('⚠️ 設置音量失敗:', e);
-          }
-        }
-        
-        // 改進音頻處理邏輯，確保 Vercel 環境正常工作
-        // 在播放器準備就绪後，根據傳入參數設置正確的音頻狀態
+        // 統一的音頻狀態設置邏輯
         try {
           console.log('🔊 設置播放器音頻狀態 - muted:', muted, 'userHasInteracted:', userHasInteracted);
           
-          // 根據傳入的 muted 參數設置音頻狀態
+          // 首先設置靜音狀態
           await player.setMuted(muted);
-          if (!muted) {
+          
+          if (muted) {
+            // 靜音模式：確保音量為0
+            await player.setVolume(0);
+            console.log('🔇 播放器設置為靜音狀態，音量: 0');
+          } else {
+            // 非靜音模式：設置合適的音量
             await player.setVolume(0.7);
             console.log('🔊 播放器設置為非靜音狀態，音量: 0.7');
-          } else {
-            console.log('🔇 播放器設置為靜音狀態');
           }
+          
+          // 驗證設置結果
+          const finalVolume = await player.getVolume();
+          const finalMuted = await player.getMuted();
+          console.log('🔊 最終音頻狀態 - 音量:', finalVolume, '靜音:', finalMuted);
           
           // 如果允許自動播放且用戶已交互，嘗試開始播放
           if (autoplay && userHasInteracted) {
@@ -354,7 +336,7 @@ const VimeoPlayer = React.forwardRef(({
             } catch (playError) {
                 const errorMessage = playError?.message || playError?.toString() || '未知錯誤';
                 console.warn('⚠️ 自動播放失敗，需要用戶手動啟動:', errorMessage);
-                if (errorMessage.includes('user activation')) {
+                if (errorMessage && typeof errorMessage === 'string' && errorMessage.includes('user activation')) {
                     console.log('🔇 由於瀏覽器政策，需要用戶互動才能播放');
                 } else {
                     console.log('🔇 自動播放失敗，暫停播放器');
@@ -478,51 +460,40 @@ const VimeoPlayer = React.forwardRef(({
         // 在播放器準備就绪後註冊事件监听器
         // 全螢幕状态变化事件 - 改進狀態管理
         player.on('fullscreenchange', async (data) => {
-          console.log('🖥️ 全螢幕状态变化:', data.fullscreen);
-          setIsFullscreen(data.fullscreen);
+          console.log('🖥️ === 全螢幕狀態變化調試 ===');
+          console.log('全螢幕狀態:', data.fullscreen);
           
-          // 進入全螢幕時確保播放狀態和音量正確
           if (data.fullscreen) {
-            // 添加延遲確保全屏轉換完成
             setTimeout(async () => {
               try {
-                // 檢查當前播放狀態
+                // 詳細狀態檢查
                 const paused = await player.getPaused();
                 const currentMuted = await player.getMuted();
                 const currentVolume = await player.getVolume();
+                const duration = await player.getDuration();
                 
-                console.log('🖥️ 全螢幕模式狀態檢查:', {
+                console.log('🔍 進入全螢幕時的完整狀態:', {
                   paused,
-                  muted: currentMuted,
-                  volume: currentVolume,
-                  shouldBeMuted: muted
+                  vimeoMuted: currentMuted,
+                  vimeoVolume: currentVolume,
+                  propsMuted: muted,
+                  duration,
+                  autoplay,
+                  userInteracted
                 });
                 
-                // 🔧 修復：全螢幕時強制恢復音量，無論muted參數如何
-                console.log('🖥️ 全螢幕模式 - 強制恢復音量和取消靜音');
-                await player.setMuted(false);
-                // 檢查當前音量，如果為0則設置為合理音量
-                if (currentVolume === 0) {
-                  await player.setVolume(0.7); // 設置為70%音量
-                } else {
-                  await player.setVolume(Math.max(currentVolume, 0.5)); // 至少50%音量
-                }
+                // 記錄瀏覽器信息
+                console.log('🌐 瀏覽器信息:', {
+                  userAgent: navigator.userAgent,
+                  autoplayPolicy: 'unknown', // 瀏覽器不直接暴露此信息
+                  fullscreenElement: !!document.fullscreenElement
+                });
                 
-                // 然後處理播放狀態
-                if (paused && autoplay) {
-                  console.log('🖥️ 全螢幕模式 - 恢復播放');
-                  try {
-                    await player.play();
-                    console.log('✅ 全螢幕模式播放恢復成功');
-                    setUserHasInteracted(true);
-                  } catch (playError) {
-                    console.warn('⚠️ 全螢幕模式播放恢復失敗:', playError.message);
-                    setPlaybackHealth('warning');
-                  }
-                }
+                // 不做任何音量修改，只記錄
+                console.log('⏸️ 暫不修改音量，僅觀察行為');
                 
               } catch (error) {
-                console.warn('⚠️ 全螢幕狀態恢復失敗:', error);
+                console.error('❌ 全螢幕狀態檢查失敗:', error);
               }
             }, 300);
           }
@@ -796,18 +767,24 @@ const VimeoPlayer = React.forwardRef(({
     useEffect(() => {
       if (playerRef.current) {
         console.log('🔊 VimeoPlayer - muted屬性變化:', muted);
-        if (muted) {
-          playerRef.current.setVolume(0).then(() => {
-            console.log('🔇 VimeoPlayer - 已設置靜音');
-          }).catch(e => {
-            console.warn('⚠️ VimeoPlayer - 設置靜音失敗:', e);
-          });
-        } else {
-          // 當取消靜音時，需要恢復音量
-          // 但我們需要從父組件獲取正確的音量值
-          console.log('🔊 VimeoPlayer - 取消靜音，但音量恢復由CoursePlayer管理');
-          // 這裡不直接設置音量，讓CoursePlayer的handlePlayerReady處理
-        }
+        
+        // 統一的音頻狀態設置邏輯
+        playerRef.current.setMuted(muted).then(async () => {
+          if (muted) {
+            await playerRef.current.setVolume(0);
+            console.log('🔇 VimeoPlayer - 已設置靜音狀態');
+          } else {
+            await playerRef.current.setVolume(0.7);
+            console.log('🔊 VimeoPlayer - 已取消靜音，恢復音量: 0.7');
+          }
+          
+          // 驗證最終狀態
+          const finalVolume = await playerRef.current.getVolume();
+          const finalMuted = await playerRef.current.getMuted();
+          console.log('🔊 VimeoPlayer - 最終音頻狀態 - 音量:', finalVolume, '靜音:', finalMuted);
+        }).catch(e => {
+          console.warn('⚠️ VimeoPlayer - 音頻狀態設置失敗:', e);
+        });
       }
     }, [muted]);
 
