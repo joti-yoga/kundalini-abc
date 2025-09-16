@@ -276,16 +276,23 @@ const VimeoPlayer = React.forwardRef(({
       console.log('🔍 新播放器實例創建成功 - videoId:', videoId, '實例:', player);
       // 添加全局錯誤捕獲，防止 Vimeo SDK 內部錯誤
       const handleVimeoSDKError = (error) => {
-        // 🔧 修復：安全的錯誤檢查，防止 undefined.includes() 錯誤
-        const isUndefinedPropertiesError = error && 
-          typeof error === 'string' && 
-          typeof error.includes === 'function' && 
-          error.includes('Cannot read properties of undefined');
-          
-        if (isUndefinedPropertiesError) {
-          console.warn('🛡️ 捕獲到 Vimeo SDK 內部錯誤，已安全處理:', error);
+        // 🔧 修復：完全安全的錯誤檢查，使用 try-catch 防止任何 includes() 錯誤
+        try {
+          if (error && 
+              typeof error === 'string' && 
+              typeof error.includes === 'function') {
+            const isUndefinedPropertiesError = error.includes('Cannot read properties of undefined');
+            
+            if (isUndefinedPropertiesError) {
+              console.warn('🛡️ 捕獲到 Vimeo SDK 內部錯誤，已安全處理:', error);
+              return;
+            }
+          }
+        } catch (e) {
+          console.warn('⚠️ 錯誤處理過程中發生異常:', e);
           return;
         }
+        
         originalConsoleErrorRef.current.apply(console, arguments);
       };
       
@@ -372,7 +379,11 @@ const VimeoPlayer = React.forwardRef(({
                   }
                   
                   // Vercel環境特殊處理：檢查localStorage中的用戶偏好
-                  if (typeof window !== 'undefined' && window.location.hostname.includes('vercel')) {
+                  if (typeof window !== 'undefined' && 
+                      window.location && 
+                      window.location.hostname && 
+                      typeof window.location.hostname.includes === 'function' && 
+                      (window.location.hostname.includes('vercel') || window.location.hostname.includes('kundalini'))) {
                     const savedMuted = localStorage.getItem('coursePlayerMuted');
                     if (savedMuted) {
                       try {
@@ -392,10 +403,18 @@ const VimeoPlayer = React.forwardRef(({
                   console.warn('⚠️ 錯誤處理中的音頻狀態恢復失敗:', audioRecoveryError);
                 }
                 
-                // 🔧 修復：安全的字符串檢查，防止 undefined.includes() 錯誤
-                const isUserActivationError = errorMessage && 
-                  typeof errorMessage === 'string' && 
-                  errorMessage.toLowerCase().includes('user activation');
+                // 🔧 修復：完全安全的字符串檢查，防止 undefined.includes() 錯誤
+                let isUserActivationError = false;
+                try {
+                  isUserActivationError = errorMessage && 
+                    typeof errorMessage === 'string' && 
+                    typeof errorMessage.toLowerCase === 'function' &&
+                    typeof errorMessage.toLowerCase().includes === 'function' &&
+                    errorMessage.toLowerCase().includes('user activation');
+                } catch (e) {
+                  console.warn('⚠️ 用戶激活錯誤檢查失敗:', e);
+                  isUserActivationError = false;
+                }
                   
                 if (isUserActivationError) {
                     console.log('🔇 由於瀏覽器政策，需要用戶互動才能播放');
@@ -774,13 +793,17 @@ const VimeoPlayer = React.forwardRef(({
         console.error('Vimeo Player 初始化錯誤:', err);
         const errorMessage = err.message || '影片載入失敗';
         
-        // 如果是網路錯誤或權限錯誤，嘗試重試
-        if (retryCount < maxRetries && errorMessage && typeof errorMessage === 'string' && (
-          errorMessage.includes('network') ||
-          errorMessage.includes('403') ||
-          errorMessage.includes('401') ||
-          errorMessage.includes('timeout')
-        )) {
+        // 🔧 修復：安全的錯誤檢查，防止 undefined.includes() 錯誤
+        const isRetryableError = errorMessage && 
+          typeof errorMessage === 'string' && 
+          typeof errorMessage.includes === 'function' && (
+            errorMessage.includes('network') ||
+            errorMessage.includes('403') ||
+            errorMessage.includes('401') ||
+            errorMessage.includes('timeout')
+          );
+        
+        if (retryCount < maxRetries && isRetryableError) {
           console.log(`重試載入影片 (${retryCount + 1}/${maxRetries})`);
           setRetryCount(prev => prev + 1);
           return;
@@ -800,14 +823,19 @@ const VimeoPlayer = React.forwardRef(({
       const errorMessage = err.message || '無法創建播放器';
       
       // Vercel 環境特殊錯誤處理
-      const isNetworkError = err.message?.includes('network') || 
-                            err.message?.includes('fetch') ||
-                            err.message?.includes('CORS') ||
-                            err.name === 'NetworkError';
+      // 🔧 修復：安全的錯誤檢查，防止 undefined.includes() 錯誤
+      const errorMsg = err.message || '';
+      const isNetworkError = (typeof errorMsg === 'string' && typeof errorMsg.includes === 'function') ? (
+        errorMsg.includes('network') || 
+        errorMsg.includes('fetch') ||
+        errorMsg.includes('CORS')
+      ) : false || err.name === 'NetworkError';
       
-      const isPermissionError = err.message?.includes('permission') ||
-                               err.message?.includes('autoplay') ||
-                               err.message?.includes('policy');
+      const isPermissionError = (typeof errorMsg === 'string' && typeof errorMsg.includes === 'function') ? (
+        errorMsg.includes('permission') ||
+        errorMsg.includes('autoplay') ||
+        errorMsg.includes('policy')
+      ) : false;
       
       // 針對不同錯誤類型採用不同重試策略
       if (retryCount < maxRetries) {
