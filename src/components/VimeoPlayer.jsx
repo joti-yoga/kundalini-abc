@@ -276,7 +276,13 @@ const VimeoPlayer = React.forwardRef(({
       console.log('🔍 新播放器實例創建成功 - videoId:', videoId, '實例:', player);
       // 添加全局錯誤捕獲，防止 Vimeo SDK 內部錯誤
       const handleVimeoSDKError = (error) => {
-        if (error && typeof error === 'string' && error.includes && error.includes('Cannot read properties of undefined')) {
+        // 🔧 修復：安全的錯誤檢查，防止 undefined.includes() 錯誤
+        const isUndefinedPropertiesError = error && 
+          typeof error === 'string' && 
+          typeof error.includes === 'function' && 
+          error.includes('Cannot read properties of undefined');
+          
+        if (isUndefinedPropertiesError) {
           console.warn('🛡️ 捕獲到 Vimeo SDK 內部錯誤，已安全處理:', error);
           return;
         }
@@ -334,7 +340,21 @@ const VimeoPlayer = React.forwardRef(({
               await player.play();
               console.log('▶️ 自動播放成功啟動');
             } catch (playError) {
-                const errorMessage = typeof playError === 'string' ? playError : playError?.message || playError?.toString() || '未知錯誤';
+                // 🔧 修復：安全的錯誤訊息處理，防止 undefined.includes() 錯誤
+                let errorMessage = '未知錯誤';
+                try {
+                  if (typeof playError === 'string') {
+                    errorMessage = playError;
+                  } else if (playError && typeof playError.message === 'string') {
+                    errorMessage = playError.message;
+                  } else if (playError && typeof playError.toString === 'function') {
+                    errorMessage = playError.toString();
+                  }
+                } catch (e) {
+                  console.warn('⚠️ 錯誤訊息處理失敗:', e);
+                  errorMessage = '錯誤訊息處理失敗';
+                }
+                
                 console.warn('⚠️ 自動播放失敗，需要用戶手動啟動:', errorMessage);
                 
                 // 🔧 修復：確保錯誤處理不會影響音頻狀態恢復
@@ -372,7 +392,12 @@ const VimeoPlayer = React.forwardRef(({
                   console.warn('⚠️ 錯誤處理中的音頻狀態恢復失敗:', audioRecoveryError);
                 }
                 
-                if (errorMessage && typeof errorMessage === 'string' && errorMessage.includes('user activation')) {
+                // 🔧 修復：安全的字符串檢查，防止 undefined.includes() 錯誤
+                const isUserActivationError = errorMessage && 
+                  typeof errorMessage === 'string' && 
+                  errorMessage.toLowerCase().includes('user activation');
+                  
+                if (isUserActivationError) {
                     console.log('🔇 由於瀏覽器政策，需要用戶互動才能播放');
                 } else {
                     console.log('🔇 自動播放失敗，暫停播放器');
