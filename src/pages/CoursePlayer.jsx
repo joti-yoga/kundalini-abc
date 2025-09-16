@@ -69,14 +69,22 @@ export default function CoursePlayer() {
   // 音量狀態管理
   const [currentVolume, setCurrentVolume] = useState(() => {
     // 從localStorage恢復音量設置，默認70%
-    const savedVolume = localStorage.getItem('vimeo-player-volume');
+    const savedVolume = localStorage.getItem('coursePlayerVolume');
     return savedVolume ? parseFloat(savedVolume) : 0.7;
   });
   const [isMuted, setIsMuted] = useState(() => {
-    // 從localStorage恢復靜音設置，默認不靜音
-    const savedMuted = localStorage.getItem('vimeo-player-muted');
-    // 更嚴格的類型轉換：只有明確是 'true' 才返回 true
-    return savedMuted === 'true';
+    // 檢查localStorage中的用戶偏好
+    const savedMuted = localStorage.getItem('coursePlayerMuted');
+    if (savedMuted) {
+      try {
+        return JSON.parse(savedMuted);
+      } catch (e) {
+        console.warn('解析靜音狀態失敗:', e);
+      }
+    }
+    
+    // HTTPS 環境默認靜音，等待用戶交互
+    return window.location.protocol === 'https:';
   });
   const vimeoPlayerRef = useRef(null); // VimeoPlayer的引用
 
@@ -208,6 +216,44 @@ export default function CoursePlayer() {
     }
   }, [id, videoIds]);
 
+  // 從 localStorage 恢復音量和靜音狀態，並監聽VimeoPlayer的音頻啟用事件
+  useEffect(() => {
+    const savedVolume = localStorage.getItem('coursePlayerVolume');
+    const savedMuted = localStorage.getItem('coursePlayerMuted');
+    
+    if (savedVolume) {
+      const volume = parseFloat(savedVolume);
+      if (!isNaN(volume) && volume >= 0 && volume <= 1) {
+        setCurrentVolume(volume);
+        console.log('🔊 恢復保存的音量:', volume);
+      }
+    }
+    
+    if (savedMuted) {
+      try {
+        const muted = JSON.parse(savedMuted);
+        setIsMuted(muted);
+        console.log('🔊 恢復保存的靜音狀態:', muted);
+      } catch (e) {
+        console.warn('解析靜音狀態失敗:', e);
+      }
+    }
+    
+    const handleVimeoAudioEnabled = (event) => {
+      console.log('🔊 CoursePlayer - 收到VimeoPlayer音頻啟用事件:', event.detail);
+      if (event.detail && typeof event.detail.muted === 'boolean') {
+        setIsMuted(event.detail.muted);
+        localStorage.setItem('coursePlayerMuted', JSON.stringify(event.detail.muted));
+      }
+    };
+    
+    window.addEventListener('vimeoAudioEnabled', handleVimeoAudioEnabled);
+    
+    return () => {
+      window.removeEventListener('vimeoAudioEnabled', handleVimeoAudioEnabled);
+    };
+  }, []);
+
 
 
   // 清理 URL 中的多餘參數
@@ -229,7 +275,7 @@ export default function CoursePlayer() {
       
       // 更新狀態，這會觸發VimeoPlayer的muted屬性變化
       setIsMuted(newMutedState);
-      localStorage.setItem('vimeo-player-muted', newMutedState.toString());
+      localStorage.setItem('coursePlayerMuted', JSON.stringify(newMutedState));
       
       // 不再直接操作播放器音量，讓VimeoPlayer的useEffect處理
       console.log('🔊 CoursePlayer - 靜音狀態已更新，VimeoPlayer將自動處理音頻設置');
@@ -330,13 +376,13 @@ export default function CoursePlayer() {
         setCurrentVolume(volume);
         
         // 持久化音量設置到localStorage
-        localStorage.setItem('vimeo-player-volume', volume.toString());
+        localStorage.setItem('coursePlayerVolume', volume.toString());
         
         // 只有當音量大於0時才更新靜音狀態為false
         // 避免將Vimeo播放器的初始音量0誤判為用戶主動靜音
         if (volume > 0) {
           setIsMuted(false);
-          localStorage.setItem('vimeo-player-muted', 'false');
+          localStorage.setItem('coursePlayerMuted', JSON.stringify(false));
           console.log('🔊 檢測到有聲音，設置為非靜音狀態並持久化');
         }
         console.log('🔇 當前靜音狀態保持為:', isMuted);
@@ -378,29 +424,34 @@ export default function CoursePlayer() {
       const isHTTPS = window.location.protocol === 'https:';
       console.log('🔊 CoursePlayer - 環境檢測:', isHTTPS ? 'HTTPS' : 'HTTP');
       
-      if (isHTTPS && !isMuted) {
+      if (isHTTPS) {
         // HTTPS 環境：等待用戶交互後再啟用音頻
         const handleFirstInteraction = async () => {
           try {
-            await player.setMuted(false);
-            await player.setVolume(currentVolume || 0.7);
-            console.log('🔊 CoursePlayer - HTTPS 環境：用戶交互後成功啟用音頻');
+            if (!isMuted) {
+              await player.setMuted(false);
+              await player.setVolume(currentVolume || 0.7);
+              console.log('🔊 CoursePlayer - HTTPS 環境：用戶交互後成功啟用音頻');
+              // 更新狀態為非靜音
+              setIsMuted(false);
+              localStorage.setItem('coursePlayerMuted', JSON.stringify(false));
+            }
           } catch (error) {
             console.warn('⚠️ CoursePlayer - HTTPS 音頻啟用失敗:', error);
           }
-          
-          // 移除事件監聽器
-          document.removeEventListener('click', handleFirstInteraction);
-          document.removeEventListener('touchstart', handleFirstInteraction);
-          document.removeEventListener('keydown', handleFirstInteraction);
         };
         
         // 添加多種交互事件監聽
         document.addEventListener('click', handleFirstInteraction, { once: true });
         document.addEventListener('touchstart', handleFirstInteraction, { once: true });
         document.addEventListener('keydown', handleFirstInteraction, { once: true });
+        
+        // 如果已經靜音，直接設置靜音狀態
+        if (isMuted) {
+          await player.setMuted(true);
+        }
       } else {
-        // HTTP 環境或已靜音：直接恢復音量設置
+        // HTTP 環境：直接恢復音量設置
         await restoreVolume(player);
       }
       
@@ -930,7 +981,7 @@ export default function CoursePlayer() {
                       style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
                       title={isMuted ? "取消靜音" : "靜音"}
                     >
-                      {isMuted ? "🔊" : "🔇"}
+                      {isMuted ? "🔇" : "🔊"}
                     </button>
                     
                     <button

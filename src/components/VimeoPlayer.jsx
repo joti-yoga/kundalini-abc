@@ -334,7 +334,7 @@ const VimeoPlayer = React.forwardRef(({
               await player.play();
               console.log('▶️ 自動播放成功啟動');
             } catch (playError) {
-                const errorMessage = playError?.message || playError?.toString() || '未知錯誤';
+                const errorMessage = typeof playError === 'string' ? playError : playError?.message || playError?.toString() || '未知錯誤';
                 console.warn('⚠️ 自動播放失敗，需要用戶手動啟動:', errorMessage);
                 if (errorMessage && typeof errorMessage === 'string' && errorMessage.includes('user activation')) {
                     console.log('🔇 由於瀏覽器政策，需要用戶互動才能播放');
@@ -785,6 +785,58 @@ const VimeoPlayer = React.forwardRef(({
         }).catch(e => {
           console.warn('⚠️ VimeoPlayer - 音頻狀態設置失敗:', e);
         });
+      }
+    }, [muted]);
+
+    // HTTPS 音頻處理 - 解決線上環境音頻問題
+    useEffect(() => {
+      if (!playerRef.current) return;
+      
+      const isHTTPS = window.location.protocol === 'https:';
+      console.log('🔊 VimeoPlayer - 環境檢測:', isHTTPS ? 'HTTPS' : 'HTTP');
+      
+      if (isHTTPS) {
+        const handleFirstInteraction = async () => {
+          try {
+            // 檢查localStorage中的靜音設置，而不是當前的muted狀態
+            const savedMuted = localStorage.getItem('coursePlayerMuted');
+            const shouldBeMuted = savedMuted ? JSON.parse(savedMuted) : false;
+            
+            console.log('🔊 VimeoPlayer - HTTPS 用戶交互檢測:', {
+              currentMuted: muted,
+              savedMuted: shouldBeMuted,
+              shouldEnableAudio: !shouldBeMuted
+            });
+            
+            if (!shouldBeMuted && playerRef.current) {
+              await playerRef.current.setMuted(false);
+              await playerRef.current.setVolume(0.7);
+              console.log('🔊 VimeoPlayer - HTTPS 環境：用戶交互後成功啟用音頻');
+              
+              // 通知父組件更新靜音狀態
+              if (typeof window !== 'undefined' && window.dispatchEvent) {
+                window.dispatchEvent(new CustomEvent('vimeoAudioEnabled', {
+                  detail: { muted: false }
+                }));
+              }
+            } else {
+              console.log('🔇 VimeoPlayer - HTTPS 環境：根據用戶設置保持靜音');
+            }
+          } catch (error) {
+            console.warn('⚠️ VimeoPlayer - HTTPS 音頻啟用失敗:', error);
+          }
+        };
+        
+        // 添加多種交互事件監聽
+        document.addEventListener('click', handleFirstInteraction, { once: true });
+        document.addEventListener('touchstart', handleFirstInteraction, { once: true });
+        document.addEventListener('keydown', handleFirstInteraction, { once: true });
+        
+        return () => {
+          document.removeEventListener('click', handleFirstInteraction);
+          document.removeEventListener('touchstart', handleFirstInteraction);
+          document.removeEventListener('keydown', handleFirstInteraction);
+        };
       }
     }, [muted]);
 
