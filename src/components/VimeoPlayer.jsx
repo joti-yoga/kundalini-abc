@@ -336,6 +336,42 @@ const VimeoPlayer = React.forwardRef(({
             } catch (playError) {
                 const errorMessage = typeof playError === 'string' ? playError : playError?.message || playError?.toString() || '未知錯誤';
                 console.warn('⚠️ 自動播放失敗，需要用戶手動啟動:', errorMessage);
+                
+                // 🔧 修復：確保錯誤處理不會影響音頻狀態恢復
+                try {
+                  // 重新確認音頻狀態，確保用戶偏好得到尊重
+                  console.log('🔊 錯誤處理中：重新確認音頻狀態 - muted:', muted);
+                  await player.setMuted(muted);
+                  
+                  if (muted) {
+                    await player.setVolume(0);
+                    console.log('🔇 錯誤處理中：確保靜音狀態');
+                  } else {
+                    await player.setVolume(0.7);
+                    console.log('🔊 錯誤處理中：確保非靜音狀態，音量: 0.7');
+                  }
+                  
+                  // Vercel環境特殊處理：檢查localStorage中的用戶偏好
+                  if (typeof window !== 'undefined' && window.location.hostname.includes('vercel')) {
+                    const savedMuted = localStorage.getItem('coursePlayerMuted');
+                    if (savedMuted) {
+                      try {
+                        const userPreferredMuted = JSON.parse(savedMuted);
+                        console.log('🔧 Vercel環境：從localStorage恢復音頻偏好:', userPreferredMuted);
+                        await player.setMuted(userPreferredMuted);
+                        if (!userPreferredMuted) {
+                          await player.setVolume(0.7);
+                        }
+                        console.log('✅ Vercel環境：音頻偏好恢復成功');
+                      } catch (e) {
+                        console.warn('⚠️ Vercel環境：localStorage音頻偏好解析失敗:', e);
+                      }
+                    }
+                  }
+                } catch (audioRecoveryError) {
+                  console.warn('⚠️ 錯誤處理中的音頻狀態恢復失敗:', audioRecoveryError);
+                }
+                
                 if (errorMessage && typeof errorMessage === 'string' && errorMessage.includes('user activation')) {
                     console.log('🔇 由於瀏覽器政策，需要用戶互動才能播放');
                 } else {
@@ -348,6 +384,74 @@ const VimeoPlayer = React.forwardRef(({
           }
         } catch (audioError) {
           console.warn('⚠️ 音頻設置失敗:', audioError.message);
+          
+          // 🔧 修復：音頻設置失敗時的恢復機制
+          try {
+            console.log('🔧 音頻設置失敗，嘗試恢復機制');
+            
+            // Vercel環境特殊處理：強制從localStorage恢復用戶偏好
+          if (typeof window !== 'undefined' && window.location.hostname.includes('vercel')) {
+            console.log('🔧 Vercel環境：執行音頻偏好強制恢復');
+            
+            const savedMuted = localStorage.getItem('coursePlayerMuted');
+            const savedVolume = localStorage.getItem('coursePlayerVolume');
+            
+            if (savedMuted !== null) {
+              try {
+                const userPreferredMuted = JSON.parse(savedMuted);
+                console.log('🔧 Vercel環境：恢復用戶靜音偏好:', userPreferredMuted);
+                
+                // 使用延遲確保播放器準備就緒
+                setTimeout(async () => {
+                  try {
+                    await player.setMuted(userPreferredMuted);
+                    
+                    if (userPreferredMuted) {
+                      await player.setVolume(0);
+                      console.log('🔇 Vercel環境：強制恢復靜音狀態');
+                    } else {
+                      const volume = savedVolume ? parseFloat(savedVolume) : 0.7;
+                      await player.setVolume(volume);
+                      console.log('🔊 Vercel環境：強制恢復非靜音狀態，音量:', volume);
+                    }
+                    
+                    console.log('✅ Vercel環境：音頻偏好強制恢復成功');
+                  } catch (e) {
+                    console.warn('⚠️ Vercel環境：延遲音頻恢復失敗:', e);
+                  }
+                }, 100);
+              } catch (e) {
+                console.warn('⚠️ Vercel環境：localStorage偏好解析失敗:', e);
+              }
+            } else {
+              // 沒有保存的偏好，使用傳入的muted參數
+              console.log('🔧 Vercel環境：使用默認音頻狀態 - muted:', muted);
+              setTimeout(async () => {
+                try {
+                  await player.setMuted(muted);
+                  await player.setVolume(muted ? 0 : 0.7);
+                  console.log('✅ Vercel環境：默認音頻狀態設置成功');
+                } catch (e) {
+                  console.warn('⚠️ Vercel環境：默認音頻狀態設置失敗:', e);
+                }
+              }, 100);
+            }
+          } else {
+            // 非Vercel環境的標準恢復邏輯
+            console.log('🔧 標準環境：執行音頻狀態恢復');
+            setTimeout(async () => {
+              try {
+                await player.setMuted(muted);
+                await player.setVolume(muted ? 0 : 0.7);
+                console.log('✅ 標準環境：音頻狀態恢復成功');
+              } catch (e) {
+                console.warn('⚠️ 標準環境：音頻狀態恢復失敗:', e);
+              }
+            }, 100);
+          }
+          } catch (recoveryError) {
+            console.warn('⚠️ 音頻恢復機制執行失敗:', recoveryError);
+          }
         }
         
         // 調用 onReady 回調（在音量設置之後）
