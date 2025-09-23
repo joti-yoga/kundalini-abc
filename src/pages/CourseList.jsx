@@ -186,6 +186,11 @@ export default function CourseList() {
   const navigate = useNavigate();
   const windowSize = useWindowSize();
   const isMobile = windowSize.width < 768;
+  const isDesktop = !isMobile;
+  
+  // 新增：手機端頁面狀態管理
+  const [mobileCurrentPage, setMobileCurrentPage] = useState('main'); // 'main', 'beginner', 'complete', 'playlist', 'custom'
+  const [mobilePageTitle, setMobilePageTitle] = useState('');
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -233,26 +238,55 @@ export default function CourseList() {
     }
   };
 
+  // 新增：手機端頁面導航函數
+  const navigateToMobilePage = (page, title) => {
+    if (isMobile) {
+      setMobileCurrentPage(page);
+      setMobilePageTitle(title);
+    } else {
+      // 桌面版保持原有的展開邏輯
+      toggleSection(page);
+    }
+  };
+
+  const backToMainPage = () => {
+    setMobileCurrentPage('main');
+    setMobilePageTitle('');
+  };
+
+  // 修改原有的 toggleSection 函數
   const toggleSection = (section) => {
-    setExpandedSections(prev => {
-      // 如果當前選單已經展開，則關閉所有選單
-      if (prev[section]) {
+    if (isMobile) {
+      // 手機版使用頁面導航
+      const titles = {
+        beginner: '新手必修',
+        complete: '完整課',
+        playlist: '播放列表',
+        custom: '自選課'
+      };
+      navigateToMobilePage(section, titles[section]);
+    } else {
+      // 桌面版保持原有邏輯
+      setExpandedSections(prev => {
+        // 如果當前選單已經展開，則關閉所有選單
+        if (prev[section]) {
+          return {
+            beginner: false,
+            complete: false,
+            playlist: false,
+            custom: false
+          };
+        }
+        // 否則關閉所有選單，只展開當前選單
         return {
           beginner: false,
           complete: false,
           playlist: false,
-          custom: false
+          custom: false,
+          [section]: true
         };
-      }
-      // 否則關閉所有選單，只展開當前選單
-      return {
-        beginner: false,
-        complete: false,
-        playlist: false,
-        custom: false,
-        [section]: true
-      };
-    });
+      });
+    }
   };
 
   const toggleCourse = (courseId) => {
@@ -467,8 +501,382 @@ export default function CourseList() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
-        <div className="text-white text-xl">載入中...</div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center">
+        <div className="text-xl text-gray-600">載入中...</div>
+      </div>
+    );
+  }
+  
+  // 手機端頁面渲染邏輯
+  if (isMobile && mobileCurrentPage !== 'main') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
+        {/* 手機端頁面頂部導航 */}
+        <div className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+          <div className="flex items-center justify-between p-4">
+            <button
+              onClick={backToMainPage}
+              className="flex items-center text-blue-600 hover:text-blue-800 transition"
+            >
+              <span className="text-xl mr-2">←</span>
+              <span className="font-medium">返回</span>
+            </button>
+            <h1 className="text-lg font-bold text-gray-800">{mobilePageTitle}</h1>
+            <div className="w-16"></div> {/* 佔位符保持標題居中 */}
+          </div>
+        </div>
+
+        {/* 手機端內容區域 */}
+        <div className="p-4">
+          {mobileCurrentPage === 'beginner' && (
+            <div className="space-y-4">
+              {beginnerCoursesVideos.map(video => (
+                <div key={video.id} className="bg-white rounded-lg shadow p-4">
+                  <button
+                    className="w-full text-left"
+                    onClick={() => {
+                      setSelectedVideo(video);
+                      setShowVideoModal(true);
+                    }}
+                  >
+                    <div className="flex gap-3">
+                      <img
+                        src={video.thumbnail}
+                        alt={video.title}
+                        className="w-24 h-14 object-cover rounded flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-gray-800 text-sm mb-1">{video.title}</h3>
+                        <p className="text-xs text-gray-600 mb-1 line-clamp-2">{video.description}</p>
+                        <p className="text-xs text-blue-600">{video.duration}</p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {mobileCurrentPage === 'complete' && (
+            <div className="space-y-4">
+              {completeCoursesVideos.map(video => (
+                <div key={video.id} className="bg-white rounded-lg shadow p-4">
+                  <button
+                    className="w-full text-left"
+                    onClick={() => {
+                      setSelectedVideo(video);
+                      setShowVideoModal(true);
+                    }}
+                  >
+                    <div className="flex gap-3">
+                      <img
+                        src={video.thumbnail}
+                        alt={video.title}
+                        className="w-24 h-14 object-cover rounded flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-gray-800 text-sm mb-1">{video.title}</h3>
+                        <p className="text-xs text-gray-600 mb-1 line-clamp-2">{video.description}</p>
+                        <p className="text-xs text-blue-600">{video.duration}</p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {mobileCurrentPage === 'playlist' && (
+            <div className="space-y-4">
+              {savedPlaylists.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500 mb-4">還沒有保存的播放列表</p>
+                  <button
+                    onClick={() => navigateToMobilePage('custom', '自選課')}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+                  >
+                    創建播放列表
+                  </button>
+                </div>
+              ) : (
+                savedPlaylists.map(playlist => (
+                  <div key={playlist.id} className="bg-white rounded-lg shadow p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-800 text-sm mb-1">{playlist.name}</h3>
+                        {playlist.description && (
+                          <p className="text-xs text-gray-600 mb-2">{playlist.description}</p>
+                        )}
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span>{Object.keys(playlist.courses).length} 個影片</span>
+                          <span>{calculatePlaylistDuration(playlist)}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => deletePlaylist(playlist.id)}
+                        className="text-red-500 hover:text-red-700 text-xs p-1"
+                      >
+                        刪除
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-2 mb-3">
+                      {Object.entries(playlist.courses).slice(0, 2).map(([courseId, optionIds]) => {
+                        const course = mockCourses.find(c => c.id === courseId);
+                        if (!Array.isArray(optionIds) || optionIds.length === 0) return null;
+                        return optionIds.slice(0, 2).map(optionId => {
+                          const option = course?.options.find(o => o.id === optionId);
+                          return option ? (
+                            <div key={`${courseId}-${optionId}`} className="flex items-center gap-2 text-xs">
+                              <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                              <span className="text-gray-700 flex-1">{course.title}: {option.title}</span>
+                              <span className="text-gray-500">{option.duration}</span>
+                            </div>
+                          ) : null;
+                        });
+                      }).flat().filter(Boolean)}
+                      {Object.keys(playlist.courses).length > 2 && (
+                        <div className="text-gray-400 text-xs pl-4">...還有 {Object.keys(playlist.courses).length - 2} 個影片</div>
+                      )}
+                    </div>
+                    
+                    <button
+                      onClick={() => playPlaylist(playlist)}
+                      className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
+                    >
+                      開始播放
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {mobileCurrentPage === 'custom' && (
+            <div className="space-y-4">
+              <div className="bg-purple-100 p-4 rounded-lg mb-4">
+                <p className="text-sm text-gray-700 text-center">選擇每個類別的影片，組成你的專屬課程</p>
+              </div>
+              
+              {mockCourses.map(course => (
+                <div key={course.id} className="bg-white rounded-lg shadow">
+                  <button
+                    onClick={() => toggleCourse(course.id)}
+                    className="w-full p-4 text-left flex justify-between items-center hover:bg-gray-50 rounded-lg transition"
+                  >
+                    <span className="font-semibold text-gray-800 text-sm">{course.title}</span>
+                    <div className="flex items-center gap-2">
+                      {selectedCourses[course.id] && (
+                        <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">已選擇</span>
+                      )}
+                      <span className="text-base">{expandedCourses[course.id] ? '▼' : '▶'}</span>
+                    </div>
+                  </button>
+                  
+                  {expandedCourses[course.id] && (
+                    <div className="p-4 pt-0">
+                      <div className="space-y-3">
+                        {course.options.map(option => (
+                          <button
+                            key={option.id}
+                            className={`p-3 rounded-lg border-2 transition-all duration-200 w-full text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50 hover:shadow-lg ${
+                              Array.isArray(selectedCourses[course.id]) && selectedCourses[course.id].includes(option.id)
+                                ? 'border-purple-500 bg-purple-100'
+                                : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50'
+                            }`}
+                            onClick={() => {
+                              if (option.vimeoId) {
+                                setSelectedVideo(option);
+                                setShowVideoModal(true);
+                              }
+                              handleCourseSelection(course.id, option.id);
+                            }}
+                          >
+                            <div className="flex items-start gap-3">
+                              {option.thumbnail ? (
+                                <img
+                                  src={option.thumbnail}
+                                  alt={option.title}
+                                  className="object-cover rounded flex-shrink-0 transition-transform duration-200 hover:scale-105"
+                                  style={{ width: '80px', height: '45px' }}
+                                />
+                              ) : (
+                                <div className="bg-gray-200 rounded flex-shrink-0 flex items-center justify-center" style={{ width: '80px', height: '45px' }}>
+                                  <span className="text-gray-400 text-xs">即將上線</span>
+                                </div>
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-gray-800 text-sm">{option.title}</h4>
+                                <p className="text-xs text-gray-600 mt-1 line-clamp-2">{option.description}</p>
+                                <p className="text-xs text-purple-600 mt-1">{option.duration}</p>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {/* 已選課程預覽 - 手機版 */}
+              {Object.keys(selectedCourses).some(courseId => 
+                Array.isArray(selectedCourses[courseId]) && selectedCourses[courseId].length > 0
+              ) && (
+                <div className="bg-white rounded-lg shadow p-4 sticky bottom-4">
+                  <h3 className="font-semibold text-gray-800 mb-2 text-sm">已選課程預覽</h3>
+                  <div className="space-y-1 mb-3 max-h-32 overflow-y-auto">
+                    {Object.entries(selectedCourses).map(([courseId, optionIds]) => {
+                      const course = mockCourses.find(c => c.id === courseId);
+                      if (!Array.isArray(optionIds) || optionIds.length === 0) return null;
+                      return optionIds.map(optionId => {
+                        const option = course?.options.find(o => o.id === optionId);
+                        return option ? (
+                          <div key={`${courseId}-${optionId}`} className="flex justify-between items-center text-xs">
+                            <span className="text-gray-700 flex-1 mr-2">{course.title}: {option.title}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-purple-600">{option.duration}</span>
+                              <button
+                                onClick={() => removeSelectedVideo(courseId, optionId)}
+                                className="w-4 h-4 bg-red-500 text-white rounded-full text-xs hover:bg-red-600 transition-colors flex items-center justify-center flex-shrink-0"
+                                title="移除此影片"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        ) : null;
+                      });
+                    }).flat()}
+                  </div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-semibold text-gray-800 text-sm">總時長: {getSelectedCoursesDuration()}</span>
+                  </div>
+                  <button
+                    onClick={() => setShowSaveDialog(true)}
+                    className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm"
+                  >
+                    保存播放列表
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* VimeoPlayer 模態框 */}
+        {showVideoModal && selectedVideo && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999] p-2 md:p-4">
+            <div className="bg-white rounded-lg w-full max-w-6xl max-h-[98vh] md:max-h-[95vh] flex flex-col">
+              <div className="flex justify-between items-center p-3 md:p-4 border-b flex-shrink-0">
+                <h3 className="text-base md:text-lg font-semibold text-gray-900 truncate pr-4">
+                  {selectedVideo.title}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowVideoModal(false);
+                    setSelectedVideo(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700 text-2xl font-bold flex-shrink-0"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="flex-1 p-3 md:p-4 overflow-y-auto">
+                <div className="modal-video-container mb-4">
+                  <VimeoPlayer
+                    videoId={selectedVideo.vimeoId}
+                    width={400}
+                    height={225}
+                    controls={true}
+                    autoplay={false}
+                    responsive={false}
+                    onReady={(player) => {
+                      console.log('VimeoPlayer ready for:', selectedVideo.vimeoId);
+                      console.log('Player instance:', player);
+                    }}
+                    onError={(error) => {
+                      console.error('VimeoPlayer error:', error);
+                      console.error('Error details:', {
+                        message: error.message,
+                        vimeoId: selectedVideo.vimeoId
+                      });
+                    }}
+                  />
+                </div>
+                {selectedVideo.description && (
+                  <div className="bg-gray-50 p-3 md:p-4 rounded-lg">
+                    <p className="text-sm text-gray-600 mb-2">{selectedVideo.description}</p>
+                    <p className="text-xs text-gray-500">時長：{selectedVideo.duration}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 保存對話框 - 手機版 */}
+        {showSaveDialog && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <h4 className="text-lg font-bold mb-4 text-center text-yellow-700">
+                建立專屬播放列表
+              </h4>
+              
+              <div className="mb-3">
+                <label className="block text-sm font-medium mb-2 text-yellow-700">播放列表名稱 *</label>
+                <input
+                  type="text"
+                  value={playlistName}
+                  onChange={(e) => setPlaylistName(e.target.value)}
+                  placeholder="為你的專屬課程命名"
+                  className="w-full border border-gray-400 rounded focus:outline-none focus:border-gray-600 px-3 py-2 text-sm"
+                  autoFocus
+                />
+              </div>
+              
+              <div className="mb-3">
+                <label className="block text-sm font-medium mb-2 text-yellow-700">播放列表描述（選填）</label>
+                <textarea
+                  value={playlistDescription}
+                  onChange={(e) => setPlaylistDescription(e.target.value)}
+                  placeholder="描述這個專屬課程的特色或目標"
+                  rows={2}
+                  className="w-full border border-gray-400 rounded focus:outline-none focus:border-gray-600 resize-none px-3 py-2 text-sm"
+                />
+              </div>
+              
+              <div className="mb-4 text-center text-sm text-yellow-700">
+                <div className="mb-1">
+                  <span>已選擇 {Object.keys(selectedCourses).length} 個影片</span>
+                </div>
+                <div className="font-medium">
+                  <span>總時長：{getSelectedCoursesDuration()}</span>
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setShowSaveDialog(false);
+                    setPlaylistName('');
+                    setPlaylistDescription('');
+                  }}
+                  className="flex-1 bg-gray-200 text-gray-800 border border-gray-400 rounded hover:bg-gray-300 transition duration-200 font-medium px-3 py-2 text-sm"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={savePlaylist}
+                  disabled={!playlistName.trim()}
+                  className="flex-1 bg-yellow-400 text-white rounded hover:bg-yellow-500 transition duration-200 font-bold shadow-none disabled:bg-gray-300 disabled:cursor-not-allowed px-3 py-2 text-sm"
+                >
+                  保存並開始
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -641,14 +1049,14 @@ export default function CourseList() {
               {expandedSections.beginner && (
                 <div>
                   <h2 className="text-2xl font-bold text-gray-800 mb-6">新手必修</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 gap-6 w-full">
                     {beginnerCoursesVideos.map(video => (
                       <button 
                         key={video.id} 
-                        className="bg-green-50 rounded-lg p-4 shadow hover:shadow-lg transition-all duration-200 text-left w-full hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50"
+                        className="bg-yellow-50 rounded-lg p-4 shadow hover:shadow-lg transition-all duration-200 text-left w-full hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-opacity-50"
                         onClick={() => {
                           console.log('Beginner video clicked:', video);
-                          console.log('Video URL will be:', `https://vimeo.com/${video.vimeoId}`);
+                          console.log('Video URL will be:', `https://player.vimeo.com/video/${video.vimeoId}`);
                           // 創建嵌入式播放器模態框
                           setSelectedVideo(video);
                           setShowVideoModal(true);
@@ -657,11 +1065,15 @@ export default function CourseList() {
                         }}
                         aria-label={`觀看影片：${video.title}`}
                       >
-                        <div className="aspect-video mb-3 rounded-lg overflow-hidden" style={{ width: '400px', height: '224px' }}>
+                        <div className="mb-3 rounded-lg overflow-hidden w-full" style={{
+                          aspectRatio: '16/9',
+                          maxWidth: isDesktop ? '400px' : '100%'
+                        }}>
                           <img 
                             src={video.thumbnail} 
                             alt={video.title}
                             className="w-full h-full object-cover transition-transform duration-200 hover:scale-105"
+                            style={windowSize.width < 768 ? { width: '100%', height: '100%', maxWidth: '100%' } : {}}
                           />
                         </div>
                         <h3 className="text-lg font-semibold text-gray-800 mb-2">{video.title}</h3>
@@ -677,7 +1089,7 @@ export default function CourseList() {
               {expandedSections.complete && (
                 <div>
                   <h2 className="text-2xl font-bold text-gray-800 mb-6">完整課</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 gap-6 w-full">
                     {completeCoursesVideos.map(video => (
                       <button 
                         key={video.id} 
@@ -693,7 +1105,10 @@ export default function CourseList() {
                         }}
                         aria-label={`觀看影片：${video.title}`}
                       >
-                        <div className="aspect-video mb-3 rounded-lg overflow-hidden" style={{ width: '400px', height: '224px' }}>
+                        <div className="mb-3 rounded-lg overflow-hidden w-full" style={{
+                          aspectRatio: '16/9',
+                          maxWidth: isDesktop ? '400px' : '100%'
+                        }}>
                           <img 
                             src={video.thumbnail} 
                             alt={video.title}
@@ -1031,8 +1446,48 @@ export default function CourseList() {
           </div>
         )}
 
-        {/* Mobile: Original vertical layout */}
-        {isMobile && (
+        {/* Mobile: Updated vertical layout to match Home page style */}
+        {isMobile && mobileCurrentPage === 'main' && (
+          <div 
+            className="flex flex-col items-center px-4 h-full justify-center"
+            style={{
+              gap: '1.5rem',
+              minHeight: 'calc(100vh - 200px)'
+            }}
+          >
+            {/* Four main navigation buttons - optimized for mobile viewport */}
+            <button
+              onClick={() => toggleSection('beginner')}
+              className="bg-yellow-400 text-white px-8 py-4 rounded-xl shadow hover:bg-yellow-500 transition text-2xl font-bold w-full max-w-[280px] min-h-[80px]"
+            >
+              新手必修
+            </button>
+            
+            <button
+              onClick={() => toggleSection('complete')}
+              className="bg-yellow-400 text-white px-8 py-4 rounded-xl shadow hover:bg-yellow-500 transition text-2xl font-bold w-full max-w-[280px] min-h-[80px]"
+            >
+              完整課
+            </button>
+            
+            <button
+              onClick={() => toggleSection('playlist')}
+              className="bg-yellow-400 text-white px-8 py-4 rounded-xl shadow hover:bg-yellow-500 transition text-2xl font-bold w-full max-w-[280px] min-h-[80px]"
+            >
+              播放列表
+            </button>
+            
+            <button
+              onClick={() => toggleSection('custom')}
+              className="bg-yellow-400 text-white px-8 py-4 rounded-xl shadow hover:bg-yellow-500 transition text-2xl font-bold w-full max-w-[280px] min-h-[80px]"
+            >
+              自選課
+            </button>
+          </div>
+        )}
+
+        {/* Keep original mobile expanded sections for backward compatibility */}
+        {false && isMobile && mobileCurrentPage === 'main' && (
           <div className="space-y-6">
             {/* 新手必修 */}
             <div className="bg-green-100 rounded-xl shadow">
@@ -1052,13 +1507,8 @@ export default function CourseList() {
                         key={video.id} 
                         className="bg-green-200 p-4 rounded-lg w-full text-left hover:bg-green-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 hover:shadow-lg"
                         onClick={() => {
-                          console.log('Mobile beginner video clicked:', video);
-                          console.log('Video URL will be:', `https://player.vimeo.com/video/${video.vimeoId}`);
-                          // 創建嵌入式播放器模態框
                           setSelectedVideo(video);
                           setShowVideoModal(true);
-                          // 自動收起選單以顯示模態框
-                          setExpandedSections(prev => ({ ...prev, beginner: false }));
                         }}
                       >
                         <div className="flex flex-col gap-4">
